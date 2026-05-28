@@ -361,3 +361,159 @@ h3 { font-size: 15px; font-weight: 800; }
   .subsection-label { align-items: flex-start; }
   .subsection-label small { margin-left: 0; }
 }
+
+/* WCC V1 Workflow Organization Refinement — sketch reference */
+.executive-answer-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0 6px;
+}
+.answer-card {
+  min-height: 94px;
+  padding: 14px 14px 12px;
+  border: 1px solid #d7e0ec;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.answer-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: #627083;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .065em;
+  text-transform: uppercase;
+}
+.answer-card strong {
+  display: block;
+  color: #17243a;
+  font-size: 15px;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+}
+.answer-card small {
+  display: block;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.answer-card.answer-primary {
+  border-color: #94bfff;
+  background: #f5f9ff;
+  box-shadow: inset 3px 0 0 var(--blue), var(--shadow);
+}
+.focus-card h3 {
+  padding-bottom: 9px;
+  border-bottom: 1px solid #e5ebf3;
+  margin-bottom: 9px;
+  text-transform: uppercase;
+  letter-spacing: .025em;
+}
+.focus-card h3 a {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 700;
+}
+.cognition-stats {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e5ebf3;
+}
+.cognition-row {
+  align-items: center;
+  border-bottom: 1px solid #e9eef5;
+}
+.cognition-row:last-child { border-bottom: 0; }
+.cognition-row span {
+  border: 1px solid #d7e0ec;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #f8fafc;
+  color: #344256;
+  font-size: 11px;
+  font-weight: 800;
+}
+@media (max-width: 1320px) {
+  .executive-answer-strip { grid-template-columns: 1fr 1fr; }
+}
+
+/* WCC V1 Workflow Organization Refinement — Executive Command Queue */
+.workflow-header {
+  background: #fff;
+  position: sticky;
+  top: 0;
+  z-index: 8;
+}
+.executive-answer-strip {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid #cfd9e6;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.answer-card {
+  min-height: 108px;
+  border-color: #cfd9e6;
+}
+.answer-card strong { font-size: 16px; }
+.route-composer.guided-section,
+.progress-card.guided-section,
+.deployment-card.guided-section,
+.log-card.guided-section,
+.actions-card.guided-section {
+  border-top: 1px solid #cfd9e6;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, .055);
+}
+.route-composer.guided-section { border-left-color: var(--blue); }
+.progress-card.guided-section { border-left-color: var(--green); }
+.deployment-card.guided-section { border-left-color: var(--orange); }
+.log-card.guided-section { border-left-color: #475467; }
+.actions-card.guided-section { border-left-color: #082849; }
+.card-title-row h2 {
+  text-transform: uppercase;
+  letter-spacing: .015em;
+}
+.card-title-row p {
+  max-width: 720px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.subsection-label strong {
+  text-transform: uppercase;
+  letter-spacing: .02em;
+}
+.workflow-actions.action-clarity {
+  border-width: 2px;
+  background: #f7fbff;
+}
+.workflow-actions.action-clarity .btn.success,
+.workflow-actions.action-clarity .btn.primary,
+.header-actions .add-item-primary {
+  transform: translateZ(0);
+}
+.queue-primary {
+  border-color: #94bfff;
+  box-shadow: inset 3px 0 0 var(--blue), var(--shadow);
+  background: #f6f9ff;
+}
+.speed-read .mini-card,
+.oversight .mini-card {
+  border-radius: 8px;
+}
+.focus-card h3 {
+  font-size: 14px;
+  color: #17243a;
+}
+.control-grid > div,
+.state-panels > div,
+.route-review > div,
+.channel-visibility > div {
+  background: #fbfcfe;
+}
+#nextActionsTable tr:first-child td,
+#governanceLog tr:first-child td {
+  background: #fbfdff;
+}

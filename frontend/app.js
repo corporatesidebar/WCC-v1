@@ -418,6 +418,29 @@ function renderStatusVisibility() {
   $('activitySummary').textContent = `${state.activity.length} latest continuity events`;
 }
 
+
+function executiveAnswers(actions, pending, blocked) {
+  const primaryAction = actions[0]?.action || 'Create next routing item';
+  const completed = state.current === 'Sent'
+    ? `Sent to ${state.item.channel}`
+    : state.current === 'Archived'
+      ? 'Archived / closed'
+      : state.lastAction || 'No completed action yet';
+  const waiting = blocked
+    ? 'Operator unblock decision'
+    : state.current === 'New'
+      ? 'Destination suggestion'
+      : state.current === 'Review'
+        ? 'Operator approval'
+        : state.current === 'Approved'
+          ? 'Send confirmation'
+          : 'No active wait';
+  const approval = ['New', 'Review', 'Approved', 'Blocked'].includes(state.current)
+    ? `${state.item.title} / ${state.current}`
+    : 'No approval required';
+  return { primaryAction, completed, waiting, approval };
+}
+
 function render() {
   setItemLocation();
   const meta = stateMeta[state.current];
@@ -454,20 +477,32 @@ function render() {
 
   const actions = nextActions();
   $('nextActionsTable').innerHTML = actions.map(a => `<tr><td>${esc(a.action)}</td><td><span class="badge ${a.priority.toLowerCase()}">${esc(a.priority)}</span></td><td>${esc(a.owner)}</td><td>${esc(a.due)}</td><td><button class="btn ghost mini-action" data-action="${esc(a.click)}">${esc(a.status)}</button></td></tr>`).join('');
-  $('priorityActions').innerHTML = actions.slice(0, 4).map(a => `<div class="feed-row"><div>${esc(a.action)}<small>${esc(a.owner)}</small></div><span>${esc(a.priority)}</span></div>`).join('');
 
   const pending = ['New', 'Review', 'Approved'].includes(state.current) ? 1 : 0;
-  $('pendingList').innerHTML = pending ? `<div class="feed-row"><div>${esc(state.item.title)}<small class="location-note">${esc(state.item.location)}</small></div><span>${esc(state.current)}</span></div>` : `<div class="feed-row"><div>No pending approvals<small>Routing queue clear</small></div><span>Clear</span></div>`;
-  $('pendingCount').textContent = `${pending} total pending`;
-
   const blocked = state.current === 'Blocked' ? 1 : 0;
-  $('blockedList').innerHTML = blocked ? `<div class="feed-row"><div>${esc(state.item.title)}<small class="location-note">${esc(state.item.location)}</small></div><span>Blocked</span></div>` : `<div class="feed-row"><div>No blocked routing items<small>Continuity stable</small></div><span>Clear</span></div>`;
-  $('blockedCount').textContent = `${blocked} blocked`;
+  const answers = executiveAnswers(actions, pending, blocked);
 
-  $('statNew').textContent = state.current === 'New' ? 1 : 0;
-  $('statBlocked').textContent = blocked;
-  $('statReview').textContent = state.current === 'Review' ? 1 : 0;
-  $('statSent').textContent = state.sentItems.length;
+  $('priorityActions').innerHTML = actions.slice(0, 3).map(a => `<div class="feed-row cognition-row"><div>${esc(a.action)}<small>Owner: ${esc(a.owner)} · Due: ${esc(a.due)}</small></div><span>${esc(a.status)}</span></div>`).join('');
+
+  $('pendingList').innerHTML = pending || blocked
+    ? `<div class="feed-row cognition-row"><div>${esc(answers.waiting)}<small class="location-note">${esc(state.item.location)}</small></div><span>${esc(state.current)}</span></div>`
+    : `<div class="feed-row cognition-row"><div>No active waiting item<small>Routing queue clear</small></div><span>Clear</span></div>`;
+  $('pendingCount').textContent = pending || blocked ? `Waiting on: ${answers.waiting}` : 'Nothing blocking execution';
+
+  $('blockedList').innerHTML = ['New', 'Review', 'Approved', 'Blocked'].includes(state.current)
+    ? `<div class="feed-row cognition-row"><div>${esc(answers.approval)}<small>${esc(state.item.channel)} governance path</small></div><span>${state.current === 'Blocked' ? 'Hold' : 'Approve'}</span></div>`
+    : `<div class="feed-row cognition-row"><div>No governance approval required<small>${esc(state.item.location)}</small></div><span>Clear</span></div>`;
+  $('blockedCount').textContent = state.current === 'Blocked' ? 'Governance hold active' : pending ? 'Approval required before send' : 'Governance clear';
+
+  $('answerDoNow').textContent = answers.primaryAction;
+  $('answerCompleted').textContent = answers.completed;
+  $('answerWaiting').textContent = answers.waiting;
+  $('answerApproval').textContent = answers.approval;
+
+  $('statNew').textContent = actions.length;
+  $('statBlocked').textContent = pending || blocked ? 1 : 0;
+  $('statReview').textContent = state.current === 'Sent' || state.current === 'Archived' ? 1 : 0;
+  $('statSent').textContent = ['New', 'Review', 'Approved', 'Blocked'].includes(state.current) ? 1 : 0;
   $('approvalBadge').textContent = Math.max(0, 8 + pending - state.sentItems.length);
   $('deploymentBadge').textContent = state.item.channel === 'Deployments' && state.current !== 'Sent' ? 6 : 5;
   $('approvalCompliance').textContent = state.current === 'Sent' ? '98%' : state.current === 'Blocked' ? '74%' : '82%';

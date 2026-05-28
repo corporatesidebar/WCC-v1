@@ -70,8 +70,8 @@
     <main class="workspace">
       <header class="workflow-header">
         <div>
-          <span class="eyebrow">Active Workflow</span>
-          <h1>Customer Portal Release 2.4.1 <span class="status-pill active-state">Active</span></h1>
+          <span class="eyebrow">Executive Command Queue</span>
+          <h1>WCC Operational Flow <span class="status-pill active-state">Active</span></h1>
         </div>
         <div class="header-actions">
           <button class="btn primary add-item-primary" id="openAddItemBtn">+ Add Item</button>
@@ -99,6 +99,31 @@
         <div><span>Timestamp</span><strong id="statusTimestamp">Now</strong></div>
       </section>
 
+
+
+      <section class="executive-answer-strip" aria-label="Executive cognition workflow answers">
+        <div class="answer-card answer-primary">
+          <span>MY ACTIONS</span>
+          <strong id="answerDoNow">Suggest destination</strong>
+          <small>What do I do now?</small>
+        </div>
+        <div class="answer-card">
+          <span>TESTING / RESULTS</span>
+          <strong id="answerCompleted">No test result yet</strong>
+          <small>What was completed?</small>
+        </div>
+        <div class="answer-card">
+          <span>WAITING ON</span>
+          <strong id="answerWaiting">Operator review</strong>
+          <small>What am I waiting for?</small>
+        </div>
+        <div class="answer-card">
+          <span>GOVERNANCE</span>
+          <strong id="answerApproval">Approval required</strong>
+          <small>What needs approval?</small>
+        </div>
+      </section>
+
       <section class="workflow-sequence" aria-label="Operational workflow sequence">
         <div class="sequence-step sequence-current" data-flow-step="New">
           <span class="sequence-number">1</span>
@@ -121,8 +146,8 @@
       <section class="route-composer card guided-section step-create">
         <div class="card-title-row">
           <div>
-            <h2><span class="section-index">1</span>Create / Intake</h2>
-            <p>Add an upload, message, or note. Review the suggested channel, then approve/send.</p>
+            <h2><span class="section-index">1</span>MY ACTIONS</h2>
+            <p>Things the operator needs to do now: add, route, review, approve, send, or archive.</p>
           </div>
           <span class="status-pill new-state" id="currentStatePill">New</span>
         </div>
@@ -152,7 +177,7 @@
           <div><span>Next Step</span><strong id="nextStepLabel">Suggest destination</strong></div>
         </div>
 
-        <div class="subsection-label"><span>2</span><strong>Route / Review</strong><small>Suggested destination + short/long review layer</small></div>
+        <div class="subsection-label"><span>2</span><strong>ROUTE / REVIEW</strong><small>Suggested destination + short/long review layer</small></div>
         <div class="route-review">
           <div>
             <span>Suggested Destination</span>
@@ -175,7 +200,7 @@
             <p id="recommendedAction">Move to Review, approve the destination, then send to Design.</p>
           </div>
         </div>
-        <div class="subsection-label"><span>3</span><strong>Approve / Govern</strong><small>Primary operational decision controls</small></div>
+        <div class="subsection-label"><span>3</span><strong>APPROVE / GOVERN</strong><small>Primary operational decision controls</small></div>
         <div class="workflow-actions action-clarity">
           <button class="btn secondary" id="suggestRouteBtn">Suggest Destination</button>
           <button class="btn success" id="approveBtn">Approve</button>
@@ -191,7 +216,7 @@
       </section>
 
       <section class="card progress-card guided-section step-complete">
-        <div class="card-title-row"><h2><span class="section-index">4</span>Send / Complete Progress</h2><button class="collapse-card">⌃</button></div>
+        <div class="card-title-row"><div><h2><span class="section-index">2</span>TESTING / RESULTS</h2><p>What has been tested, completed, passed, failed, or moved forward.</p></div><button class="collapse-card">⌃</button></div>
         <div class="progress-line">
           <div class="step done"><span>✓</span><strong>New</strong><small>Intake</small></div>
           <div class="step" data-state-step="Review"><span>2</span><strong>Review</strong><small>Operator</small></div>
@@ -207,18 +232,18 @@
       </section>
 
       <section class="card deployment-card guided-section">
-        <div class="card-title-row"><h2>2. Routing Control</h2><button class="collapse-card">⌃</button></div>
+        <div class="card-title-row"><div><h2><span class="section-index">3</span>WAITING ON</h2><p>Who has the ball, what dependency is pending, and where the item sits.</p></div><button class="collapse-card">⌃</button></div>
         <div class="control-grid">
-          <div><span>Routing Version</span><strong>1.0.0</strong><small>Build WCCV1.STATIC</small></div>
-          <div><span>Destination Target</span><strong id="destinationTarget">Design</strong><small>push-routing</small></div>
-          <div><span>Affected Channels</span><strong id="affectedChannels">1 Channel</strong><small>Operational stream</small></div>
-          <div><span>State</span><strong id="routingState">New</strong><small>Local workflow state</small></div>
-          <div><span>Readiness Check</span><strong id="readinessScore">42%</strong><div class="mini-bar"><span id="readinessBar"></span></div><small id="readinessText">Needs review</small></div>
+          <div><span>Current Owner</span><strong>Admin Operator</strong><small>Execution owner</small></div>
+          <div><span>Waiting On</span><strong id="destinationTarget">Design</strong><small>destination/channel confirmation</small></div>
+          <div><span>Ball Location</span><strong id="affectedChannels">1 Channel</strong><small>active operational stream</small></div>
+          <div><span>Current State</span><strong id="routingState">New</strong><small>persisted workflow state</small></div>
+          <div><span>Result Readiness</span><strong id="readinessScore">42%</strong><div class="mini-bar"><span id="readinessBar"></span></div><small id="readinessText">Needs review</small></div>
         </div>
       </section>
 
       <section class="card log-card guided-section">
-        <div class="card-title-row"><h2>3. Governance Notes</h2><button class="collapse-card">⌃</button></div>
+        <div class="card-title-row"><div><h2><span class="section-index">4</span>GOVERNANCE</h2><p>Approvals, holds, escalations, policy notes, and operational decision history.</p></div><button class="collapse-card">⌃</button></div>
         <table>
           <thead><tr><th>Event</th><th>By</th><th>Note</th><th>Time</th></tr></thead>
           <tbody id="governanceLog"></tbody>
@@ -226,7 +251,7 @@
       </section>
 
       <section class="card actions-card guided-section">
-        <div class="card-title-row"><h2>4. Next Actions</h2><button class="collapse-card">⌃</button></div>
+        <div class="card-title-row"><div><h2>MY ACTIONS QUEUE</h2><p>Immediate operator actions ranked by priority and workflow state.</p></div><button class="collapse-card">⌃</button></div>
         <table>
           <thead><tr><th>Action</th><th>Priority</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>
           <tbody id="nextActionsTable"></tbody>
@@ -235,21 +260,20 @@
     </main>
 
     <aside class="speed-read panel">
-      <div class="panel-header"><span>Speed Read / Cognition Layer</span><button>•••</button></div>
-      <section class="mini-card summary-card">
-        <h3>Executive Summary</h3>
-        <div class="stat-grid">
-          <div><strong id="statNew">1</strong><span>New</span></div>
-          <div><strong id="statBlocked">0</strong><span>Blocked</span></div>
-          <div><strong id="statReview">0</strong><span>Review</span></div>
-          <div><strong id="statSent">0</strong><span>Sent</span></div>
+      <div class="panel-header"><span>Executive Command Queue</span><button>•••</button></div>
+      <section class="mini-card summary-card focus-card queue-primary">
+        <h3>MY ACTIONS <a>Do now</a></h3>
+        <div id="priorityActions"></div>
+        <div class="stat-grid cognition-stats">
+          <div><strong id="statNew">1</strong><span>Do Now</span></div>
+          <div><strong id="statBlocked">0</strong><span>Waiting</span></div>
+          <div><strong id="statReview">0</strong><span>Complete</span></div>
+          <div><strong id="statSent">0</strong><span>Approval</span></div>
         </div>
       </section>
-      <section class="mini-card activity-card"><h3>Recent Activity <a>Latest</a></h3><div id="recentActivityList"></div><small id="activitySummary">Continuity log active</small></section>
-      <section class="mini-card"><h3>Pending Approvals <a>View all</a></h3><div id="pendingList"></div><small id="pendingCount">0 total pending</small></section>
-      <section class="mini-card"><h3>Blocked States <a>View all</a></h3><div id="blockedList"></div><small id="blockedCount">0 blocked</small></section>
-      <section class="mini-card"><h3>Operational Risks <a>View all</a></h3><div class="risk-row warn">Routing decision not approved yet<span>1</span></div><div class="risk-row warn">Unsent operational item<span>1</span></div><div class="risk-row warn">Continuity gap possible<span>1</span></div><small>3 risks</small></section>
-      <section class="mini-card"><h3>Priority Actions <a>View all</a></h3><div id="priorityActions"></div><small>Workflow-driven actions</small></section>
+      <section class="mini-card activity-card focus-card"><h3>TESTING / RESULTS <a>Completed</a></h3><div id="recentActivityList"></div><small id="activitySummary">No test result recorded yet</small></section>
+      <section class="mini-card focus-card"><h3>WAITING ON <a>Blocking flow</a></h3><div id="pendingList"></div><small id="pendingCount">0 waiting items</small></section>
+      <section class="mini-card focus-card"><h3>GOVERNANCE <a>Approval</a></h3><div id="blockedList"></div><small id="blockedCount">0 governance blockers</small></section>
     </aside>
 
     <aside class="oversight panel">
@@ -297,7 +321,7 @@
   </div>
 
   <script>
-    window.WCC_API_BASE_URL = "https://wcc-backend.onrender.com";
+    window.WCC_API_BASE_URL = "https://wcc-backend-f305.onrender.com";
   </script>
   <script src="app.js"></script>
 </body>

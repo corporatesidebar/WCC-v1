@@ -1,29 +1,17 @@
-# WCC V1 — Executive Cognition Flow Refinement
+# WCC V1 — Workflow Organization Refinement
 
-Static frontend refinement only.
+Frontend-only refinement. No backend changes, no architecture changes, no AI.
 
-## Included
+## Applied
+- Reorganized visible workflow hierarchy around: My Actions, Testing / Results, Waiting On, Governance.
+- Strengthened executive cognition hierarchy and section separation.
+- Preserved existing 4-column WCC layout and backend integration.
+- Verified frontend backend URL is set in `frontend/index.html`:
+  `https://wcc-backend-f305.onrender.com`
 
-- `frontend/index.html`
-- `frontend/styles.css`
-- `frontend/app.js`
-
-## Patch Focus
-
-- Preserved existing four-column WCC layout.
-- Added visible workflow sequence:
-  1. Create / Intake
-  2. Route / Review
-  3. Approve / Govern
-  4. Send / Complete
-- Increased section header size, weight, and anchoring.
-- Added stronger section boundaries, dividers, and grouping rhythm.
-- Improved primary action clarity for Add Item, Route, Approve, and Send.
-- Preserved existing backend integration and workflow states.
-
-## No Changes
-
-- No redesign.
-- No backend changes.
-- No AI added.
-- No architecture change.
+## Deployment Test
+1. Deploy updated frontend.
+2. Add item.
+3. Refresh page and confirm persistence.
+4. Change status.
+5. Refresh page and confirm state/channel/activity persistence remains.

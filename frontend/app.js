@@ -56,6 +56,8 @@ const state = {
   sentItems: []
 };
 
+let modalSelectedType = 'Task';
+
 const destinationRules = [
   { channel: 'Design', terms: ['design', 'ui', 'ux', 'figma', 'layout', 'column', 'screenshot', 'png', 'refinement', 'visual'] },
   { channel: 'Governance', terms: ['governance', 'policy', 'approval', 'approve', 'decision', 'rule', 'compliance', 'log'] },
@@ -471,6 +473,49 @@ function render() {
   renderStatusVisibility();
 }
 
+
+function openAddItemModal() {
+  modalSelectedType = $('itemType').value || 'Task';
+  $('modalItemTitle').value = '';
+  $('modalItemContent').value = '';
+  document.querySelectorAll('#modalTypeGrid button').forEach(button => {
+    button.classList.toggle('active', button.dataset.type === modalSelectedType);
+  });
+  $('addItemModal').classList.add('open');
+  $('addItemModal').setAttribute('aria-hidden', 'false');
+  setTimeout(() => $('modalItemTitle').focus(), 0);
+}
+
+function closeAddItemModal() {
+  $('addItemModal').classList.remove('open');
+  $('addItemModal').setAttribute('aria-hidden', 'true');
+}
+
+async function createItemFromModal() {
+  const title = $('modalItemTitle').value.trim() || `New ${modalSelectedType}`;
+  const content = $('modalItemContent').value.trim() || `${modalSelectedType} created from the primary Add Item workflow.`;
+  state.item = {
+    id: null,
+    type: modalSelectedType,
+    title,
+    content,
+    channel: 'Design',
+    location: 'Intake / Not Sent'
+  };
+  state.current = 'New';
+  $('itemType').value = modalSelectedType;
+  $('itemTitle').value = title;
+  $('itemContent').value = content;
+  addLog('Item Created', 'Admin Operator', `${modalSelectedType} added from primary action`);
+  updateContinuity('Item created', `${title} added to intake. Next step: suggest destination.`, 'confirmed');
+  updateReviewCopy();
+  closeAddItemModal();
+  render();
+  await ensureItemPersisted('item created');
+  await recordActivity('item created', `${title} created as ${modalSelectedType}.`);
+  await suggestDestination();
+}
+
 function nextActions() {
   if (state.current === 'New') return [
     { action: 'Add item and suggest destination', priority: 'High', owner: 'System', due: 'Now', status: 'Suggest', click: 'suggest' },
@@ -548,6 +593,20 @@ $('archiveBtn').addEventListener('click', archiveItem);
   updateReviewCopy();
   render();
 }));
+
+
+$('openAddItemBtn').addEventListener('click', openAddItemModal);
+$('closeAddItemBtn').addEventListener('click', closeAddItemModal);
+$('cancelAddItemBtn').addEventListener('click', closeAddItemModal);
+$('createAddItemBtn').addEventListener('click', createItemFromModal);
+$('addItemModal').addEventListener('click', (event) => { if (event.target.id === 'addItemModal') closeAddItemModal(); });
+document.querySelectorAll('#modalTypeGrid button').forEach(button => {
+  button.addEventListener('click', () => {
+    modalSelectedType = button.dataset.type;
+    document.querySelectorAll('#modalTypeGrid button').forEach(btn => btn.classList.toggle('active', btn === button));
+  });
+});
+document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && $('addItemModal').classList.contains('open')) closeAddItemModal(); });
 
 document.querySelectorAll('[data-main-action]').forEach(btn => {
   btn.addEventListener('click', () => {

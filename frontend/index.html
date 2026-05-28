@@ -74,6 +74,7 @@
           <h1>Customer Portal Release 2.4.1 <span class="status-pill active-state">Active</span></h1>
         </div>
         <div class="header-actions">
+          <button class="btn primary add-item-primary" id="openAddItemBtn">+ Add Item</button>
           <button class="btn secondary" data-main-action="approve">✓ Approve</button>
           <button class="btn primary" data-main-action="deploy">↑ Deploy</button>
           <button class="btn warning" data-main-action="hold">Ⅱ Hold</button>
@@ -109,9 +110,12 @@
         <div class="intake-grid">
           <label>Item Type
             <select id="itemType">
-              <option>Upload</option>
-              <option>Note</option>
+              <option>Task</option>
               <option>Message</option>
+              <option>Note</option>
+              <option>Upload</option>
+              <option>Deployment</option>
+              <option>Governance Item</option>
               <option>Link</option>
             </select>
           </label>
@@ -236,6 +240,41 @@
       <section class="mini-card"><h3>Workflow Continuity <a>View details</a></h3><div class="health-row">At Risk Workflows <b id="atRiskWorkflows">1</b></div><div class="health-row">Unassigned Ownership <b>0</b></div><div class="health-row">Inactive Workflows <b>2</b></div><div class="health-row">Continuity Integrity <b id="continuityIntegrity">88%</b></div></section>
     </aside>
   </div>
+  <div class="modal-backdrop" id="addItemModal" aria-hidden="true">
+    <section class="add-item-panel" role="dialog" aria-modal="true" aria-labelledby="addItemTitle">
+      <div class="modal-header">
+        <div>
+          <span class="eyebrow">Primary Workflow Action</span>
+          <h2 id="addItemTitle">Add Item</h2>
+          <p>Create a routing item, then review destination, approval state, and send path.</p>
+        </div>
+        <button class="modal-close" id="closeAddItemBtn" aria-label="Close add item panel">×</button>
+      </div>
+
+      <div class="item-type-grid" id="modalTypeGrid">
+        <button data-type="Task">Task</button>
+        <button data-type="Message">Message</button>
+        <button data-type="Note">Note</button>
+        <button data-type="Upload">Upload</button>
+        <button data-type="Deployment">Deployment</button>
+        <button data-type="Governance Item">Governance Item</button>
+      </div>
+
+      <label>Title
+        <input id="modalItemTitle" placeholder="Name the operational item" />
+      </label>
+
+      <label>Content / Notes
+        <textarea id="modalItemContent" placeholder="Paste message, note, link, deployment context, or governance detail"></textarea>
+      </label>
+
+      <div class="modal-actions">
+        <button class="btn ghost" id="cancelAddItemBtn">Cancel</button>
+        <button class="btn primary" id="createAddItemBtn">Create + Route</button>
+      </div>
+    </section>
+  </div>
+
   <script>
     window.WCC_API_BASE_URL = "https://wcc-backend.onrender.com";
   </script>

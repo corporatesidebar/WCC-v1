@@ -48,6 +48,21 @@ h1 { margin: 8px 0 0; font-size: 26px; letter-spacing: -.035em; display: flex; a
 .header-actions, .workflow-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn { border: 1px solid var(--line); background: #fff; border-radius: 5px; padding: 9px 14px; font-weight: 650; color: #334155; }
 .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.add-item-primary { box-shadow: 0 8px 18px rgba(23, 105, 232, .18); white-space: nowrap; }
+.modal-backdrop { position: fixed; inset: 0; z-index: 50; display: none; align-items: flex-start; justify-content: flex-end; padding: 72px 376px 24px 24px; background: rgba(7, 21, 35, .28); }
+.modal-backdrop.open { display: flex; }
+.add-item-panel { width: min(520px, calc(100vw - 48px)); background: #fff; border: 1px solid var(--line); border-radius: 9px; box-shadow: 0 24px 60px rgba(15, 23, 42, .2); padding: 18px; }
+.modal-header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 14px; }
+.modal-header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.modal-close { border: 1px solid var(--line); background: var(--soft); color: #334155; width: 34px; height: 34px; border-radius: 6px; font-size: 22px; line-height: 1; }
+.item-type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.item-type-grid button { border: 1px solid var(--line); background: var(--soft); border-radius: 6px; padding: 10px 8px; color: #344054; font-weight: 650; }
+.item-type-grid button.active { border-color: var(--blue); background: #eaf2ff; color: var(--blue); }
+.add-item-panel label { margin-bottom: 12px; }
+.add-item-panel textarea { min-height: 112px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+@media (max-width: 1380px) { .modal-backdrop { padding-right: 24px; } }
+
 .btn.secondary { color: var(--blue); border-color: #8db7ff; }
 .btn.warning { color: #9a5a00; border-color: #f6bd68; background: #fff9ef; }
 .btn.danger { color: var(--red); border-color: #ffa5a5; }

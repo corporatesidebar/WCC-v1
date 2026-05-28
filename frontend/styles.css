@@ -75,7 +75,8 @@ h2 { font-size: 16px; } h3 { font-size: 14px; }
 .intake-grid .wide { grid-column: 1 / -1; }
 input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 6px; padding: 10px 11px; background: #fff; color: var(--text); outline-color: #9bc0ff; }
 textarea { min-height: 74px; resize: vertical; }
-.route-review { display: grid; grid-template-columns: 180px 1fr 1.5fr; gap: 12px; margin: 14px 0; }
+.route-review { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.route-review > div:nth-child(3), .route-review > div:nth-child(4), .route-review > div:nth-child(5) { min-height: 112px; }
 .route-review > div { border: 1px solid var(--line); border-radius: 6px; background: var(--soft); padding: 12px; }
 .route-review p { margin: 0; color: #344054; font-size: 13px; line-height: 1.5; }
 .progress-line { display: grid; grid-template-columns: repeat(5, 1fr); position: relative; padding: 6px 14px 20px; border-bottom: 1px solid var(--line); }
@@ -123,3 +124,5 @@ tr:last-child td { border-bottom: 0; }
 .mini-card > small { color: var(--orange); display: block; margin-top: 6px; }
 .health-row b { color: var(--green); font-weight: 700; }
 @media (max-width: 1400px) { .app-shell { grid-template-columns: 238px minmax(620px, 1fr) 310px 310px; } .header-actions { max-width: 440px; justify-content: flex-end; } }
+
+@media (max-width: 1320px) { .route-review { grid-template-columns: 1fr 1fr; } }

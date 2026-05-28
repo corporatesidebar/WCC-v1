@@ -1,64 +1,31 @@
-# WCC V1 Static Frontend
+# WCC V1 Static Frontend — Routing Workflow Refinement
 
-Static frontend build for WCC — Workflow Command Center.
+Static frontend only. No backend. No AI service.
 
-## Scope
+## File Structure
 
-- Frontend only
-- No backend
-- No AI layer
-- Preserves the approved four-column governance layout
-- Implements a push-based routing workflow in local browser state
-
-## Files
-
-```text
+```
 frontend/index.html
 frontend/styles.css
 frontend/app.js
 README.md
 ```
 
-## Core Workflow
+## Implemented Refinement
 
-1. User adds an upload, message, note, deployment item, or approval item.
-2. System suggests a destination channel using local keyword routing rules.
-3. User reviews the short version and long version.
-4. User clicks Approve / Send.
-5. Item moves into the correct channel/state.
-
-## Required States
-
-- New
-- Review
-- Approved
-- Sent
-- Blocked
-- Archived
-
-## Run Locally
-
-Open `frontend/index.html` in a browser.
-
-For a local static server:
-
-```bash
-cd frontend
-python -m http.server 8080
-```
-
-Then open:
-
-```text
-http://localhost:8080
-```
+- Preserved approved 4-column governance layout.
+- Added operational routing workflow for Upload, Note, Message, and Link.
+- Suggested destination channels: Design, Governance, Deployments, EE Core, Documents, Archive.
+- Review layer generates Short Version, Long Version, Must Read, and Recommended Action.
+- Approval layer includes Approve, Edit, Hold, Send, and Archive.
+- Required workflow states supported: New, Review, Approved, Sent, Blocked, Archived.
+- All state changes are local/browser-only and reflected in Governance Notes, Speed Read, and Oversight panels.
 
 ## Deployment
 
-This can be deployed as a static site on Render, Vercel, Netlify, Cloudflare Pages, or GitHub Pages.
+Deploy `frontend/` as a static site.
 
-For Render Static Site:
-
+Render static site settings:
 - Root directory: `frontend`
 - Build command: leave blank
 - Publish directory: `.`

@@ -102,10 +102,9 @@
           <label>Item Type
             <select id="itemType">
               <option>Upload</option>
-              <option>Message</option>
               <option>Note</option>
-              <option>Deployment</option>
-              <option>Approval</option>
+              <option>Message</option>
+              <option>Link</option>
             </select>
           </label>
           <label>Title
@@ -118,22 +117,31 @@
         <div class="route-review">
           <div>
             <span>Suggested Destination</span>
-            <strong id="suggestedChannel">Active Workflows</strong>
+            <strong id="suggestedChannel">Design</strong>
           </div>
           <div>
             <span>Short Version</span>
-            <p id="shortVersion">Review Column 4 refinement package for governance oversight approval.</p>
+            <p id="shortVersion">Upload: Column 4 refinement package → Design.</p>
           </div>
           <div>
             <span>Long Version</span>
-            <p id="longVersion">This item appears related to active UI governance refinement. Suggested route: Active Workflows. Review content, approve the routing decision, then send it into the correct state/channel.</p>
+            <p id="longVersion">This upload appears related to design refinement. Suggested route: Design. Review the summary, confirm the destination, then approve/send to preserve workflow continuity.</p>
+          </div>
+          <div>
+            <span>Must Read</span>
+            <p id="mustRead">Confirm destination and state before sending. Do not route unreviewed items into active workstreams.</p>
+          </div>
+          <div>
+            <span>Recommended Action</span>
+            <p id="recommendedAction">Move to Review, approve the destination, then send to Design.</p>
           </div>
         </div>
         <div class="workflow-actions">
-          <button class="btn secondary" id="suggestRouteBtn">Suggest Route</button>
-          <button class="btn primary" id="reviewBtn">Move to Review</button>
-          <button class="btn success" id="approveSendBtn">Approve / Send</button>
-          <button class="btn warning" id="blockBtn">Block</button>
+          <button class="btn secondary" id="suggestRouteBtn">Suggest Destination</button>
+          <button class="btn success" id="approveBtn">Approve</button>
+          <button class="btn secondary" id="editBtn">Edit</button>
+          <button class="btn warning" id="holdBtn">Hold</button>
+          <button class="btn primary" id="sendBtn">Send</button>
           <button class="btn ghost" id="archiveBtn">Archive</button>
         </div>
       </section>
@@ -158,7 +166,7 @@
         <div class="card-title-row"><h2>2. Routing Control</h2><button class="collapse-card">⌃</button></div>
         <div class="control-grid">
           <div><span>Routing Version</span><strong>1.0.0</strong><small>Build WCCV1.STATIC</small></div>
-          <div><span>Destination Target</span><strong id="destinationTarget">Active Workflows</strong><small>push-routing</small></div>
+          <div><span>Destination Target</span><strong id="destinationTarget">Design</strong><small>push-routing</small></div>
           <div><span>Affected Channels</span><strong id="affectedChannels">1 Channel</strong><small>Operational stream</small></div>
           <div><span>State</span><strong id="routingState">New</strong><small>Local workflow state</small></div>
           <div><span>Readiness Check</span><strong id="readinessScore">42%</strong><div class="mini-bar"><span id="readinessBar"></span></div><small id="readinessText">Needs review</small></div>

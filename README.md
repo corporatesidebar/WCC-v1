@@ -1,31 +1,22 @@
-# WCC V1 Static Frontend — Routing Workflow Refinement
+# WCC V1 Static Frontend — State Visibility Refinement
 
-Static frontend only. No backend. No AI service.
+Static frontend only. No backend. No AI layer.
 
-## File Structure
+## Structure
 
-```
-frontend/index.html
-frontend/styles.css
-frontend/app.js
-README.md
-```
+- `frontend/index.html`
+- `frontend/styles.css`
+- `frontend/app.js`
 
-## Implemented Refinement
+## Included refinement
 
-- Preserved approved 4-column governance layout.
-- Added operational routing workflow for Upload, Note, Message, and Link.
-- Suggested destination channels: Design, Governance, Deployments, EE Core, Documents, Archive.
-- Review layer generates Short Version, Long Version, Must Read, and Recommended Action.
-- Approval layer includes Approve, Edit, Hold, Send, and Archive.
-- Required workflow states supported: New, Review, Approved, Sent, Blocked, Archived.
-- All state changes are local/browser-only and reflected in Governance Notes, Speed Read, and Oversight panels.
+- Preserves the approved 4-column governance layout.
+- Adds active item status bar with current state, destination channel, item location, last action, and timestamp.
+- Adds recent activity panel for continuity tracking.
+- Improves channel visibility: active channel, suggested destination, current location, and next step.
+- Shows visible confirmation after Approve, Send, Hold, Edit, and Archive actions.
+- Preserves workflow states: New, Review, Approved, Sent, Blocked, Archived.
 
-## Deployment
+## Deploy
 
-Deploy `frontend/` as a static site.
-
-Render static site settings:
-- Root directory: `frontend`
-- Build command: leave blank
-- Publish directory: `.`
+Deploy the `frontend` folder as a static site.

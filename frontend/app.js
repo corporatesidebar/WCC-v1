@@ -1,14 +1,27 @@
 const state = {
   current: 'New',
+  activeChannel: 'Active Workflows',
+  lastAction: 'Intake opened',
+  lastTimestamp: 'Now',
+  confirmation: {
+    title: 'Awaiting routing action',
+    text: 'Add or review an item, then approve/send when ready.',
+    tone: ''
+  },
   item: {
     type: 'Upload',
     title: 'Column 4 refinement package',
     content: 'Review the latest Column 4 oversight refinement and route to the correct operational channel for approval.',
-    channel: 'Design'
+    channel: 'Design',
+    location: 'Intake / Not Sent'
   },
   log: [
     ['Workflow Created', 'System', 'WCC routing workflow initialized', 'Now'],
     ['Intake Opened', 'Admin Operator', 'Awaiting routing recommendation', 'Now']
+  ],
+  activity: [
+    { action: 'Item created', detail: 'Column 4 refinement package opened in intake.', time: 'Now' },
+    { action: 'Workflow initialized', detail: 'Routing state set to New.', time: 'Now' }
   ],
   sentItems: []
 };
@@ -18,17 +31,32 @@ const destinationRules = [
   { channel: 'Governance', terms: ['governance', 'policy', 'approval', 'approve', 'decision', 'rule', 'compliance', 'log'] },
   { channel: 'Deployments', terms: ['deploy', 'deployment', 'render', 'github', 'release', 'production', 'staging', 'rollback', 'version'] },
   { channel: 'EE Core', terms: ['executive engine', 'ee', 'backend', 'frontend', 'api', 'run', 'engine', 'core'] },
-  { channel: 'Documents', terms: ['document', 'pdf', 'doc', 'readme', 'brief', 'proposal', 'file', 'asset', 'contract'] },
+  { channel: 'Documents', terms: ['document', 'pdf', 'doc', 'readme', 'brief', 'proposal', 'file', 'asset', 'contract', 'link'] },
   { channel: 'Archive', terms: ['archive', 'archived', 'deprecated', 'old', 'remove', 'closed', 'complete'] }
 ];
 
 const stateMeta = {
-  New: { className: 'new-state', stage: 'New Intake', text: 'Awaiting destination suggestion.', score: 35, ready: 'Needs suggestion' },
-  Review: { className: 'review-state', stage: 'Review Layer', text: 'Short version, long version, must read, and recommended action are ready for review.', score: 68, ready: 'Review in progress' },
-  Approved: { className: 'approved-state', stage: 'Approved', text: 'Destination approved. Ready to send.', score: 86, ready: 'Ready to send' },
-  Sent: { className: 'sent-state', stage: 'Sent / Routed', text: 'Item has been pushed into the approved destination channel.', score: 100, ready: 'Routed successfully' },
-  Blocked: { className: 'blocked-state', stage: 'Blocked / Hold', text: 'Routing is on hold pending operator decision.', score: 25, ready: 'Blocked' },
-  Archived: { className: 'archived-state', stage: 'Archived', text: 'Item closed and preserved for continuity.', score: 100, ready: 'Archived' }
+  New: { className: 'new-state', stage: 'New Intake', text: 'Awaiting destination suggestion.', score: 35, ready: 'Needs suggestion', next: 'Suggest destination' },
+  Review: { className: 'review-state', stage: 'Review Layer', text: 'Short version, long version, must read, and recommended action are ready for review.', score: 68, ready: 'Review in progress', next: 'Approve, edit, or hold' },
+  Approved: { className: 'approved-state', stage: 'Approved', text: 'Destination approved. Ready to send.', score: 86, ready: 'Ready to send', next: 'Send to destination' },
+  Sent: { className: 'sent-state', stage: 'Sent / Routed', text: 'Item has been pushed into the approved destination channel.', score: 100, ready: 'Routed successfully', next: 'Open channel record or archive' },
+  Blocked: { className: 'blocked-state', stage: 'Blocked / Hold', text: 'Routing is on hold pending operator decision.', score: 25, ready: 'Blocked', next: 'Edit or archive' },
+  Archived: { className: 'archived-state', stage: 'Archived', text: 'Item closed and preserved for continuity.', score: 100, ready: 'Archived', next: 'Create next item' }
+};
+
+const channelNavMap = {
+  'Deployment Queue': 'Deployments',
+  Approvals: 'Governance',
+  'Version Registry': 'Deployments',
+  Rollbacks: 'Deployments',
+  'Governance Logs': 'Governance',
+  'Archived Versions': 'Archive',
+  Projects: 'EE Core',
+  'Active Workflows': 'Design',
+  'Integrity Checks': 'Governance',
+  Settings: 'Governance',
+  'Team Access': 'Governance',
+  'Environment Config': 'Deployments'
 };
 
 const $ = (id) => document.getElementById(id);
@@ -47,6 +75,32 @@ function captureItem() {
   state.item.content = $('itemContent').value.trim();
 }
 
+function updateContinuity(action, detail, tone = '') {
+  state.lastAction = action;
+  state.lastTimestamp = nowLabel();
+  state.confirmation = { title: action, text: detail, tone };
+  state.activity.unshift({ action, detail, time: state.lastTimestamp });
+  state.activity = state.activity.slice(0, 7);
+}
+
+function addLog(event, by, note) {
+  state.log.unshift([event, by, note, nowLabel()]);
+  state.log = state.log.slice(0, 8);
+}
+
+function locationForCurrentState() {
+  if (state.current === 'Sent') return `${state.item.channel} / Sent`;
+  if (state.current === 'Archived') return 'Archive / Closed';
+  if (state.current === 'Blocked') return `${state.item.channel} / Blocked Hold`;
+  if (state.current === 'Approved') return `${state.item.channel} / Approved Queue`;
+  if (state.current === 'Review') return `${state.item.channel} / Review Queue`;
+  return 'Intake / Not Sent';
+}
+
+function setItemLocation() {
+  state.item.location = locationForCurrentState();
+}
+
 function suggestDestination() {
   captureItem();
   const haystack = `${state.item.type} ${state.item.title} ${state.item.content}`.toLowerCase();
@@ -56,10 +110,12 @@ function suggestDestination() {
     if (score > best.score) best = { channel: rule.channel, score };
   });
   state.item.channel = best.channel;
-  updateReviewCopy();
+  if (state.current === 'New') state.current = 'Review';
+  setItemLocation();
   $('destinationReady').textContent = 'Ready';
   addLog('Destination Suggested', 'System', `Suggested destination: ${state.item.channel}`);
-  if (state.current === 'New') state.current = 'Review';
+  updateContinuity('Destination suggested', `${state.item.title} moved into ${state.item.location}.`, 'warning-confirm');
+  updateReviewCopy();
   render();
 }
 
@@ -79,52 +135,100 @@ function updateReviewCopy() {
       : `Confirm this belongs in ${channel}. Do not send until the operator has reviewed the destination and action.`;
   $('recommendedAction').textContent = state.current === 'Approved'
     ? `Send to ${channel}.`
-    : `Approve destination, then send to ${channel}.`;
+    : state.current === 'Sent'
+      ? `Item is now located in ${channel}. Review the channel record or archive when closed.`
+      : state.current === 'Archived'
+        ? 'Item is archived and preserved for continuity history.'
+        : `Approve destination, then send to ${channel}.`;
 }
 
-function setState(next, shouldLog = true) {
+function setState(next, shouldLog = true, actionLabel = `State changed: ${next}`) {
   captureItem();
   state.current = next;
+  setItemLocation();
   if (shouldLog) addLog(`State Changed: ${next}`, 'Admin Operator', `Item moved to ${next}`);
+  updateContinuity(actionLabel, `${state.item.title} is now in ${state.item.location}.`, next === 'Blocked' ? 'blocked-confirm' : next === 'Archived' || next === 'Approved' ? 'confirmed' : '');
   updateReviewCopy();
   render();
 }
 
-function addLog(event, by, note) {
-  state.log.unshift([event, by, note, nowLabel()]);
-  state.log = state.log.slice(0, 8);
-}
-
 function approveItem() {
-  if (state.current === 'New') suggestDestination();
+  if (state.current === 'New') {
+    suggestDestination();
+  }
   state.current = 'Approved';
+  setItemLocation();
   addLog('Approval Captured', 'Admin Operator', `Approved routing to ${state.item.channel}`);
+  updateContinuity('Approved', `${state.item.title} approved for ${state.item.channel}. Next step: send.`, 'confirmed');
   updateReviewCopy();
   render();
 }
 
 function sendItem() {
   if (state.current === 'New') suggestDestination();
-  if (state.current === 'Review') approveItem();
-  state.sentItems.unshift({ ...state.item, state: 'Sent', time: nowLabel() });
+  if (state.current === 'Review') {
+    state.current = 'Approved';
+    addLog('Approval Captured', 'Admin Operator', `Auto-approved routing to ${state.item.channel} before send`);
+  }
   state.current = 'Sent';
+  setItemLocation();
+  state.sentItems.unshift({ ...state.item, state: 'Sent', time: nowLabel() });
   addLog('Item Sent', 'System', `Pushed into ${state.item.channel}`);
+  updateContinuity('Sent', `${state.item.title} was pushed into ${state.item.channel}. Location: ${state.item.location}.`, 'confirmed');
   updateReviewCopy();
   render();
 }
 
+function archiveItem() {
+  state.current = 'Archived';
+  setItemLocation();
+  addLog('Item Archived', 'Admin Operator', 'Item closed and preserved in Archive');
+  updateContinuity('Archived', `${state.item.title} moved to Archive / Closed.`, 'confirmed');
+  updateReviewCopy();
+  render();
+}
+
+function renderStatusVisibility() {
+  const meta = stateMeta[state.current];
+  const location = state.item.location || locationForCurrentState();
+  $('statusCurrentState').textContent = state.current;
+  $('statusDestinationChannel').textContent = state.item.channel;
+  $('statusItemLocation').textContent = location;
+  $('statusLastAction').textContent = state.lastAction;
+  $('statusTimestamp').textContent = state.lastTimestamp;
+  $('activeChannelLabel').textContent = state.activeChannel;
+  $('destinationChannelLabel').textContent = state.item.channel;
+  $('itemLocationLabel').textContent = location;
+  $('nextStepLabel').textContent = meta.next;
+
+  const banner = $('confirmationBanner');
+  banner.className = `confirmation-banner ${state.confirmation.tone}`.trim();
+  $('confirmationTitle').textContent = state.confirmation.title;
+  $('confirmationText').textContent = state.confirmation.text;
+
+  $('recentActivityList').innerHTML = state.activity.map(item => `
+    <div class="activity-item">
+      <div><strong>${esc(item.action)}</strong><small>${esc(item.detail)}</small></div>
+      <time>${esc(item.time)}</time>
+    </div>
+  `).join('');
+  $('activitySummary').textContent = `${state.activity.length} latest continuity events`;
+}
+
 function render() {
+  setItemLocation();
   const meta = stateMeta[state.current];
   const pill = $('currentStatePill');
   pill.textContent = state.current;
   pill.className = `status-pill ${meta.className}`;
   $('currentStage').textContent = meta.stage;
-  $('currentStageText').textContent = meta.text;
+  $('currentStageText').textContent = `${meta.text} Location: ${state.item.location}.`;
   $('routingState').textContent = state.current;
   $('readinessScore').textContent = `${meta.score}%`;
   $('readinessBar').style.width = `${meta.score}%`;
   $('readinessText').textContent = meta.ready;
   $('dynamicTag').textContent = state.item.channel.toLowerCase().replace(/\s+/g, '-');
+  $('destinationReady').textContent = ['Review', 'Approved', 'Sent', 'Archived'].includes(state.current) ? 'Ready' : 'Pending';
 
   document.querySelectorAll('.step').forEach(step => step.classList.remove('done', 'current'));
   const flow = ['New', 'Review', 'Approved', 'Sent', 'Archived'];
@@ -142,11 +246,11 @@ function render() {
   $('priorityActions').innerHTML = actions.slice(0, 4).map(a => `<div class="feed-row"><div>${esc(a.action)}<small>${esc(a.owner)}</small></div><span>${esc(a.priority)}</span></div>`).join('');
 
   const pending = ['New', 'Review', 'Approved'].includes(state.current) ? 1 : 0;
-  $('pendingList').innerHTML = pending ? `<div class="feed-row"><div>${esc(state.item.title)}<small>${esc(state.item.channel)}</small></div><span>${esc(state.current)}</span></div>` : `<div class="feed-row"><div>No pending approvals<small>Routing queue clear</small></div><span>Clear</span></div>`;
+  $('pendingList').innerHTML = pending ? `<div class="feed-row"><div>${esc(state.item.title)}<small class="location-note">${esc(state.item.location)}</small></div><span>${esc(state.current)}</span></div>` : `<div class="feed-row"><div>No pending approvals<small>Routing queue clear</small></div><span>Clear</span></div>`;
   $('pendingCount').textContent = `${pending} total pending`;
 
   const blocked = state.current === 'Blocked' ? 1 : 0;
-  $('blockedList').innerHTML = blocked ? `<div class="feed-row"><div>${esc(state.item.title)}<small>Operator decision required</small></div><span>Blocked</span></div>` : `<div class="feed-row"><div>No blocked routing items<small>Continuity stable</small></div><span>Clear</span></div>`;
+  $('blockedList').innerHTML = blocked ? `<div class="feed-row"><div>${esc(state.item.title)}<small class="location-note">${esc(state.item.location)}</small></div><span>Blocked</span></div>` : `<div class="feed-row"><div>No blocked routing items<small>Continuity stable</small></div><span>Clear</span></div>`;
   $('blockedCount').textContent = `${blocked} blocked`;
 
   $('statNew').textContent = state.current === 'New' ? 1 : 0;
@@ -162,6 +266,8 @@ function render() {
   $('warningTotal').textContent = `${pending + blocked + 2} total`;
   $('atRiskWorkflows').textContent = blocked || (state.current !== 'Sent' && state.current !== 'Archived' ? 1 : 0);
   $('continuityIntegrity').textContent = state.current === 'Sent' ? '96%' : state.current === 'Blocked' ? '71%' : '88%';
+
+  renderStatusVisibility();
 }
 
 function nextActions() {
@@ -170,7 +276,7 @@ function nextActions() {
     { action: 'Review short version and must-read context', priority: 'Medium', owner: 'Admin Operator', due: 'Today', status: 'Review', click: 'review' }
   ];
   if (state.current === 'Review') return [
-    { action: 'Approve routing destination', priority: 'High', owner: 'Admin Operator', due: 'Now', status: 'Approve', click: 'approve' },
+    { action: `Approve routing to ${state.item.channel}`, priority: 'High', owner: 'Admin Operator', due: 'Now', status: 'Approve', click: 'approve' },
     { action: `Hold if ${state.item.channel} is wrong`, priority: 'Medium', owner: 'Admin Operator', due: 'Now', status: 'Hold', click: 'hold' }
   ];
   if (state.current === 'Approved') return [
@@ -181,9 +287,12 @@ function nextActions() {
     { action: 'Edit item or destination', priority: 'High', owner: 'Admin Operator', due: 'Now', status: 'Edit', click: 'edit' },
     { action: 'Archive if no longer valid', priority: 'Low', owner: 'Admin Operator', due: 'Today', status: 'Archive', click: 'archive' }
   ];
-  return [
-    { action: 'Review routed channel record', priority: 'Low', owner: 'Admin Operator', due: 'Complete', status: 'Open', click: 'review' },
+  if (state.current === 'Sent') return [
+    { action: `Confirm item is visible in ${state.item.channel}`, priority: 'Low', owner: 'Admin Operator', due: 'Complete', status: 'Open', click: 'review' },
     { action: 'Archive completed item', priority: 'Low', owner: 'Admin Operator', due: 'Optional', status: 'Archive', click: 'archive' }
+  ];
+  return [
+    { action: 'Create next routing item', priority: 'Low', owner: 'Admin Operator', due: 'Optional', status: 'New', click: 'new' }
   ];
 }
 
@@ -196,19 +305,12 @@ document.addEventListener('click', (event) => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     nav.classList.add('active');
     const label = nav.dataset.channel;
-    const map = {
-      'Deployment Queue': 'Deployments',
-      'Approvals': 'Governance',
-      'Version Registry': 'Deployments',
-      'Rollbacks': 'Deployments',
-      'Governance Logs': 'Governance',
-      'Archived Versions': 'Archive',
-      'Projects': 'EE Core',
-      'Active Workflows': 'Design',
-      'Integrity Checks': 'Governance'
-    };
-    state.item.channel = map[label] || state.item.channel;
+    state.activeChannel = label;
+    state.item.channel = channelNavMap[label] || state.item.channel;
+    if (state.current === 'Sent') state.current = 'Review';
+    setItemLocation();
     addLog('Destination Manually Adjusted', 'Admin Operator', `Destination set to: ${state.item.channel}`);
+    updateContinuity('Channel visibility updated', `Active channel: ${state.activeChannel}. Destination: ${state.item.channel}. Location: ${state.item.location}.`);
     updateReviewCopy();
     render();
   }
@@ -216,24 +318,32 @@ document.addEventListener('click', (event) => {
   const mini = event.target.closest('.mini-action');
   if (mini) {
     if (mini.dataset.action === 'suggest') suggestDestination();
-    if (mini.dataset.action === 'review') setState('Review');
+    if (mini.dataset.action === 'review') setState('Review', true, 'Review reopened');
     if (mini.dataset.action === 'approve') approveItem();
     if (mini.dataset.action === 'send') sendItem();
-    if (mini.dataset.action === 'hold') setState('Blocked');
-    if (mini.dataset.action === 'edit') setState('Review');
-    if (mini.dataset.action === 'archive') setState('Archived');
+    if (mini.dataset.action === 'hold') setState('Blocked', true, 'Held / blocked');
+    if (mini.dataset.action === 'edit') setState('Review', true, 'Edit mode opened');
+    if (mini.dataset.action === 'archive') archiveItem();
+    if (mini.dataset.action === 'new') {
+      state.current = 'New';
+      setItemLocation();
+      updateContinuity('New intake ready', 'Current item reset to New intake state.');
+      render();
+    }
   }
 });
 
 $('suggestRouteBtn').addEventListener('click', suggestDestination);
 $('approveBtn').addEventListener('click', approveItem);
-$('editBtn').addEventListener('click', () => setState('Review'));
-$('holdBtn').addEventListener('click', () => setState('Blocked'));
+$('editBtn').addEventListener('click', () => setState('Review', true, 'Edit mode opened'));
+$('holdBtn').addEventListener('click', () => setState('Blocked', true, 'Held / blocked'));
 $('sendBtn').addEventListener('click', sendItem);
-$('archiveBtn').addEventListener('click', () => setState('Archived'));
+$('archiveBtn').addEventListener('click', archiveItem);
 ['itemType', 'itemTitle', 'itemContent'].forEach(id => $(id).addEventListener('input', () => {
   captureItem();
   if (['Sent', 'Archived'].includes(state.current)) state.current = 'New';
+  setItemLocation();
+  updateContinuity('Item edited', `${state.item.title} updated. Current location: ${state.item.location}.`);
   updateReviewCopy();
   render();
 }));
@@ -243,8 +353,8 @@ document.querySelectorAll('[data-main-action]').forEach(btn => {
     const action = btn.dataset.mainAction;
     if (action === 'approve') approveItem();
     if (action === 'deploy') sendItem();
-    if (action === 'hold') setState('Blocked');
-    if (action === 'rollback') { state.item.channel = 'Deployments'; setState('Review'); }
+    if (action === 'hold') setState('Blocked', true, 'Held / blocked');
+    if (action === 'rollback') { state.item.channel = 'Deployments'; setState('Review', true, 'Rollback review opened'); }
   });
 });
 

@@ -90,6 +90,14 @@
         <div><span>Governance State</span><strong><i class="dot healthy"></i>Compliant</strong></div>
       </section>
 
+      <section class="active-status-bar" aria-label="Active item status">
+        <div><span>Current State</span><strong id="statusCurrentState">New</strong></div>
+        <div><span>Destination Channel</span><strong id="statusDestinationChannel">Design</strong></div>
+        <div><span>Item Location</span><strong id="statusItemLocation">Intake / Not Sent</strong></div>
+        <div><span>Last Action</span><strong id="statusLastAction">Intake opened</strong></div>
+        <div><span>Timestamp</span><strong id="statusTimestamp">Now</strong></div>
+      </section>
+
       <section class="route-composer card">
         <div class="card-title-row">
           <div>
@@ -114,6 +122,13 @@
             <textarea id="itemContent">Review the latest Column 4 oversight refinement and route to the correct operational channel for approval.</textarea>
           </label>
         </div>
+        <div class="channel-visibility">
+          <div><span>Active Channel</span><strong id="activeChannelLabel">Active Workflows</strong></div>
+          <div><span>Suggested Destination</span><strong id="destinationChannelLabel">Design</strong></div>
+          <div><span>Current Location</span><strong id="itemLocationLabel">Intake / Review Queue</strong></div>
+          <div><span>Next Step</span><strong id="nextStepLabel">Suggest destination</strong></div>
+        </div>
+
         <div class="route-review">
           <div>
             <span>Suggested Destination</span>
@@ -143,6 +158,10 @@
           <button class="btn warning" id="holdBtn">Hold</button>
           <button class="btn primary" id="sendBtn">Send</button>
           <button class="btn ghost" id="archiveBtn">Archive</button>
+        </div>
+        <div class="confirmation-banner" id="confirmationBanner">
+          <strong id="confirmationTitle">Awaiting routing action</strong>
+          <span id="confirmationText">Add or review an item, then approve/send when ready.</span>
         </div>
       </section>
 
@@ -201,6 +220,7 @@
           <div><strong id="statSent">0</strong><span>Sent</span></div>
         </div>
       </section>
+      <section class="mini-card activity-card"><h3>Recent Activity <a>Latest</a></h3><div id="recentActivityList"></div><small id="activitySummary">Continuity log active</small></section>
       <section class="mini-card"><h3>Pending Approvals <a>View all</a></h3><div id="pendingList"></div><small id="pendingCount">0 total pending</small></section>
       <section class="mini-card"><h3>Blocked States <a>View all</a></h3><div id="blockedList"></div><small id="blockedCount">0 blocked</small></section>
       <section class="mini-card"><h3>Operational Risks <a>View all</a></h3><div class="risk-row warn">Routing decision not approved yet<span>1</span></div><div class="risk-row warn">Unsent operational item<span>1</span></div><div class="risk-row warn">Continuity gap possible<span>1</span></div><small>3 risks</small></section>

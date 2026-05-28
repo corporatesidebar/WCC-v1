@@ -223,3 +223,141 @@ tr:last-child td { border-bottom: 0; }
 @media (max-width: 1320px) {
   .active-status-bar, .channel-visibility { grid-template-columns: 1fr 1fr; }
 }
+
+/* WCC V1 Executive Cognition Flow Refinement */
+.workflow-sequence {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 4px;
+  padding: 14px;
+  border: 1px solid #cfd9e6;
+  border-radius: 9px;
+  background: linear-gradient(180deg, #fbfdff, #f7f9fc);
+  box-shadow: var(--shadow);
+}
+.sequence-step {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+  padding: 13px 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  background: #fff;
+  color: #536176;
+}
+.sequence-step strong { display: block; color: #243247; font-size: 14px; letter-spacing: -.015em; }
+.sequence-step small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.35; }
+.sequence-number {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef3f9;
+  border: 1px solid #cfd9e6;
+  color: #334155;
+  font-weight: 800;
+  font-size: 13px;
+}
+.sequence-step.sequence-current {
+  border-color: #8db7ff;
+  background: #f3f8ff;
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+.sequence-step.sequence-current .sequence-number { background: var(--blue); border-color: var(--blue); color: #fff; }
+.sequence-step.sequence-done { border-color: #bfe8ce; background: #f5fff8; }
+.sequence-step.sequence-done .sequence-number { background: #0f9d58; border-color: #0f9d58; color: #fff; }
+.guided-section {
+  margin-top: 20px;
+  padding: 20px;
+  border-color: #cfd9e6;
+  border-left: 4px solid #d7e0ec;
+}
+.route-composer.guided-section { border-left-color: var(--blue); }
+.progress-card.guided-section { border-left-color: #0f9d58; }
+.guided-section + .guided-section { margin-top: 22px; }
+.card-title-row {
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e3e9f1;
+  margin-bottom: 18px;
+}
+h2 {
+  font-size: 20px;
+  line-height: 1.18;
+  font-weight: 800;
+  color: #17243a;
+}
+h3 { font-size: 15px; font-weight: 800; }
+.section-index {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+  border-radius: 7px;
+  background: #082849;
+  color: #fff;
+  font-size: 14px;
+  vertical-align: middle;
+}
+.subsection-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 12px;
+  padding: 12px 0 0;
+  border-top: 1px solid #e3e9f1;
+}
+.subsection-label span {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #eef3f9;
+  border: 1px solid #cfd9e6;
+  color: #334155;
+  font-weight: 800;
+  font-size: 12px;
+}
+.subsection-label strong { font-size: 15px; color: #17243a; }
+.subsection-label small { margin-left: auto; color: var(--muted); font-size: 12px; }
+.workflow-actions.action-clarity {
+  padding: 14px;
+  border: 1px solid #d7e0ec;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+.workflow-actions.action-clarity .btn,
+.header-actions .btn { min-height: 38px; }
+.workflow-actions.action-clarity .btn.primary,
+.workflow-actions.action-clarity .btn.success,
+.header-actions .btn.primary {
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(23, 105, 232, .14);
+}
+.header-actions .add-item-primary {
+  padding: 11px 17px;
+  border-radius: 7px;
+  font-size: 14px;
+}
+.route-review > div,
+.channel-visibility > div,
+.active-status-bar,
+.control-grid > div,
+.state-panels > div {
+  border-color: #d7e0ec;
+}
+.route-review > div { background: #f8fafc; }
+.meta-grid { margin-bottom: 4px; }
+.active-status-bar { margin-top: 16px; }
+.confirmation-banner { margin-top: 16px; }
+.panel .mini-card { border-color: #d7e0ec; }
+.panel-header { font-size: 13px; color: #17243a; }
+@media (max-width: 1320px) {
+  .workflow-sequence { grid-template-columns: 1fr 1fr; }
+  .subsection-label { align-items: flex-start; }
+  .subsection-label small { margin-left: 0; }
+}

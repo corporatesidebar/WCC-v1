@@ -442,6 +442,14 @@ function render() {
     if (index >= 0 && idx <= index) step.classList.add('done');
   });
 
+  document.querySelectorAll('.sequence-step').forEach(step => step.classList.remove('sequence-current', 'sequence-done'));
+  const sequenceFlow = ['New', 'Review', 'Approved', 'Sent'];
+  const sequenceIndex = state.current === 'Archived' ? 3 : Math.max(0, sequenceFlow.indexOf(state.current));
+  document.querySelectorAll('.sequence-step').forEach((step, idx) => {
+    if (idx < sequenceIndex) step.classList.add('sequence-done');
+    if (idx === sequenceIndex) step.classList.add('sequence-current');
+  });
+
   $('governanceLog').innerHTML = state.log.map(row => `<tr><td>${esc(row[0])}</td><td>${esc(row[1])}</td><td>${esc(row[2])}</td><td>${esc(row[3])}</td></tr>`).join('');
 
   const actions = nextActions();

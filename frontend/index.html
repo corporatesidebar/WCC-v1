@@ -99,10 +99,29 @@
         <div><span>Timestamp</span><strong id="statusTimestamp">Now</strong></div>
       </section>
 
-      <section class="route-composer card">
+      <section class="workflow-sequence" aria-label="Operational workflow sequence">
+        <div class="sequence-step sequence-current" data-flow-step="New">
+          <span class="sequence-number">1</span>
+          <div><strong>Create / Intake</strong><small>Add item and capture context</small></div>
+        </div>
+        <div class="sequence-step" data-flow-step="Review">
+          <span class="sequence-number">2</span>
+          <div><strong>Route / Review</strong><small>Confirm destination and summary</small></div>
+        </div>
+        <div class="sequence-step" data-flow-step="Approved">
+          <span class="sequence-number">3</span>
+          <div><strong>Approve / Govern</strong><small>Validate before release</small></div>
+        </div>
+        <div class="sequence-step" data-flow-step="Sent">
+          <span class="sequence-number">4</span>
+          <div><strong>Send / Complete</strong><small>Route, preserve, or archive</small></div>
+        </div>
+      </section>
+
+      <section class="route-composer card guided-section step-create">
         <div class="card-title-row">
           <div>
-            <h2>Push Routing Intake</h2>
+            <h2><span class="section-index">1</span>Create / Intake</h2>
             <p>Add an upload, message, or note. Review the suggested channel, then approve/send.</p>
           </div>
           <span class="status-pill new-state" id="currentStatePill">New</span>
@@ -133,6 +152,7 @@
           <div><span>Next Step</span><strong id="nextStepLabel">Suggest destination</strong></div>
         </div>
 
+        <div class="subsection-label"><span>2</span><strong>Route / Review</strong><small>Suggested destination + short/long review layer</small></div>
         <div class="route-review">
           <div>
             <span>Suggested Destination</span>
@@ -155,7 +175,8 @@
             <p id="recommendedAction">Move to Review, approve the destination, then send to Design.</p>
           </div>
         </div>
-        <div class="workflow-actions">
+        <div class="subsection-label"><span>3</span><strong>Approve / Govern</strong><small>Primary operational decision controls</small></div>
+        <div class="workflow-actions action-clarity">
           <button class="btn secondary" id="suggestRouteBtn">Suggest Destination</button>
           <button class="btn success" id="approveBtn">Approve</button>
           <button class="btn secondary" id="editBtn">Edit</button>
@@ -169,8 +190,8 @@
         </div>
       </section>
 
-      <section class="card progress-card">
-        <div class="card-title-row"><h2>1. Workflow Progress</h2><button class="collapse-card">⌃</button></div>
+      <section class="card progress-card guided-section step-complete">
+        <div class="card-title-row"><h2><span class="section-index">4</span>Send / Complete Progress</h2><button class="collapse-card">⌃</button></div>
         <div class="progress-line">
           <div class="step done"><span>✓</span><strong>New</strong><small>Intake</small></div>
           <div class="step" data-state-step="Review"><span>2</span><strong>Review</strong><small>Operator</small></div>
@@ -185,7 +206,7 @@
         </div>
       </section>
 
-      <section class="card deployment-card">
+      <section class="card deployment-card guided-section">
         <div class="card-title-row"><h2>2. Routing Control</h2><button class="collapse-card">⌃</button></div>
         <div class="control-grid">
           <div><span>Routing Version</span><strong>1.0.0</strong><small>Build WCCV1.STATIC</small></div>
@@ -196,7 +217,7 @@
         </div>
       </section>
 
-      <section class="card log-card">
+      <section class="card log-card guided-section">
         <div class="card-title-row"><h2>3. Governance Notes</h2><button class="collapse-card">⌃</button></div>
         <table>
           <thead><tr><th>Event</th><th>By</th><th>Note</th><th>Time</th></tr></thead>
@@ -204,7 +225,7 @@
         </table>
       </section>
 
-      <section class="card actions-card">
+      <section class="card actions-card guided-section">
         <div class="card-title-row"><h2>4. Next Actions</h2><button class="collapse-card">⌃</button></div>
         <table>
           <thead><tr><th>Action</th><th>Priority</th><th>Owner</th><th>Due</th><th>Status</th></tr></thead>

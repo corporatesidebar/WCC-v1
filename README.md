@@ -1,22 +1,75 @@
-# WCC V1 Static Frontend — State Visibility Refinement
+# WCC V1 Frontend/Backend Connection
 
-Static frontend only. No backend. No AI layer.
+Static frontend wired to the WCC FastAPI backend.
 
-## Structure
+## Files
 
-- `frontend/index.html`
-- `frontend/styles.css`
-- `frontend/app.js`
+```text
+frontend/index.html
+frontend/styles.css
+frontend/app.js
+README.md
+```
 
-## Included refinement
+## What changed
 
-- Preserves the approved 4-column governance layout.
-- Adds active item status bar with current state, destination channel, item location, last action, and timestamp.
-- Adds recent activity panel for continuity tracking.
-- Improves channel visibility: active channel, suggested destination, current location, and next step.
-- Shows visible confirmation after Approve, Send, Hold, Edit, and Archive actions.
-- Preserves workflow states: New, Review, Approved, Sent, Blocked, Archived.
+- Existing four-column WCC governance UI preserved.
+- Add Item / Suggest Destination now creates or updates backend records.
+- Approve, Hold, Send, Archive, and state changes persist through `PATCH /items/{id}`.
+- Activity feed loads from `GET /activity`.
+- User actions create activity entries through `POST /activity`.
+- Items reload from `GET /items` and survive refresh once backend URL is configured.
 
-## Deploy
+## Backend URL configuration
 
-Deploy the `frontend` folder as a static site.
+In `frontend/app.js`, the frontend reads the backend URL from:
+
+```js
+window.WCC_API_BASE_URL
+```
+
+or:
+
+```js
+localStorage.WCC_API_BASE_URL
+```
+
+For Render static deployment, set it before loading `app.js` in `index.html` if desired:
+
+```html
+<script>
+  window.WCC_API_BASE_URL = "https://wcc-backend.onrender.com";
+</script>
+<script src="app.js"></script>
+```
+
+Alternative browser console setup for testing:
+
+```js
+localStorage.setItem("WCC_API_BASE_URL", "https://wcc-backend.onrender.com");
+location.reload();
+```
+
+## Required backend endpoints
+
+```text
+GET /items
+POST /items
+PATCH /items/{id}
+GET /activity
+POST /activity
+```
+
+## Deployment test checklist
+
+1. Deploy backend to Render.
+2. Run Supabase schema.
+3. Confirm backend `/health` returns `ok: true` and `supabase_configured: true`.
+4. Configure frontend backend URL.
+5. Open frontend.
+6. Add item.
+7. Suggest destination.
+8. Approve.
+9. Send.
+10. Refresh page.
+11. Confirm item, state, channel, and activity persist.

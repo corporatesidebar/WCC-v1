@@ -1,3 +1,32 @@
+const WCC_API_BASE_URL = (window.WCC_API_BASE_URL || localStorage.getItem('WCC_API_BASE_URL') || '').replace(/\/$/, '');
+const apiState = {
+  enabled: Boolean(WCC_API_BASE_URL),
+  online: false,
+  loading: false,
+  error: '',
+  loadedFromBackend: false
+};
+
+async function apiRequest(path, options = {}) {
+  if (!apiState.enabled) throw new Error('Backend URL not configured. Set window.WCC_API_BASE_URL or localStorage.WCC_API_BASE_URL.');
+  const response = await fetch(`${WCC_API_BASE_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options
+  });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(text || `Request failed: ${response.status}`);
+  }
+  return response.json();
+}
+
+function isoToLabel(value) {
+  if (!value) return 'Now';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Now';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 const state = {
   current: 'New',
   activeChannel: 'Active Workflows',
@@ -9,6 +38,7 @@ const state = {
     tone: ''
   },
   item: {
+    id: null,
     type: 'Upload',
     title: 'Column 4 refinement package',
     content: 'Review the latest Column 4 oversight refinement and route to the correct operational channel for approval.',
@@ -101,7 +131,7 @@ function setItemLocation() {
   state.item.location = locationForCurrentState();
 }
 
-function suggestDestination() {
+async function suggestDestination() {
   captureItem();
   const haystack = `${state.item.type} ${state.item.title} ${state.item.content}`.toLowerCase();
   let best = { channel: 'Design', score: 0 };
@@ -116,6 +146,9 @@ function suggestDestination() {
   addLog('Destination Suggested', 'System', `Suggested destination: ${state.item.channel}`);
   updateContinuity('Destination suggested', `${state.item.title} moved into ${state.item.location}.`, 'warning-confirm');
   updateReviewCopy();
+  render();
+  await ensureItemPersisted('destination suggested');
+  await recordActivity('routed', `Suggested destination ${state.item.channel}; location ${state.item.location}.`);
   render();
 }
 
@@ -142,7 +175,162 @@ function updateReviewCopy() {
         : `Approve destination, then send to ${channel}.`;
 }
 
-function setState(next, shouldLog = true, actionLabel = `State changed: ${next}`) {
+
+function reviewPayload() {
+  return {
+    short_version: $('shortVersion') ? $('shortVersion').textContent : `${state.item.type}: ${state.item.title} → ${state.item.channel}.`,
+    long_version: $('longVersion') ? $('longVersion').textContent : '',
+    must_read: $('mustRead') ? $('mustRead').textContent : ''
+  };
+}
+
+function itemPayload(overrides = {}) {
+  updateReviewCopy();
+  return {
+    title: state.item.title || 'Untitled operational item',
+    content: state.item.content || '',
+    type: state.item.type || 'Note',
+    channel: state.item.channel || 'Governance',
+    state: state.current || 'New',
+    ...reviewPayload(),
+    ...overrides
+  };
+}
+
+async function ensureItemPersisted(action = 'item created') {
+  if (!apiState.enabled) return null;
+  try {
+    apiState.loading = true;
+    if (state.item.id) {
+      const updated = await apiRequest(`/items/${state.item.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(itemPayload())
+      });
+      hydrateActiveItem(updated, false);
+      apiState.online = true;
+      apiState.error = '';
+      return updated;
+    }
+    const created = await apiRequest('/items', {
+      method: 'POST',
+      body: JSON.stringify(itemPayload())
+    });
+    hydrateActiveItem(created, false);
+    apiState.online = true;
+    apiState.error = '';
+    return created;
+  } catch (error) {
+    apiState.online = false;
+    apiState.error = error.message || 'Backend request failed';
+    updateContinuity('Persistence warning', 'Local UI updated, but backend persistence did not complete. Check backend URL/CORS.', 'blocked-confirm');
+    return null;
+  } finally {
+    apiState.loading = false;
+  }
+}
+
+async function persistItemPatch(patch = {}) {
+  if (!apiState.enabled) return null;
+  if (!state.item.id) return ensureItemPersisted();
+  try {
+    const updated = await apiRequest(`/items/${state.item.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...itemPayload(), ...patch })
+    });
+    hydrateActiveItem(updated, false);
+    apiState.online = true;
+    apiState.error = '';
+    return updated;
+  } catch (error) {
+    apiState.online = false;
+    apiState.error = error.message || 'Backend request failed';
+    updateContinuity('Persistence warning', 'State changed locally, but backend update failed. Check deployed backend.', 'blocked-confirm');
+    return null;
+  }
+}
+
+async function recordActivity(action, details) {
+  if (!apiState.enabled) return null;
+  try {
+    const created = await apiRequest('/activity', {
+      method: 'POST',
+      body: JSON.stringify({ item_id: state.item.id || null, action, details })
+    });
+    apiState.online = true;
+    apiState.error = '';
+    return created;
+  } catch (error) {
+    apiState.online = false;
+    apiState.error = error.message || 'Activity request failed';
+    return null;
+  }
+}
+
+function hydrateActiveItem(item, makeActive = true) {
+  if (!item) return;
+  state.item.id = item.id || state.item.id || null;
+  state.item.title = item.title || state.item.title;
+  state.item.content = item.content || state.item.content;
+  state.item.type = item.type || state.item.type;
+  state.item.channel = item.channel || state.item.channel;
+  state.current = item.state || state.current;
+  if (makeActive) {
+    state.lastAction = 'Loaded from backend';
+    state.lastTimestamp = isoToLabel(item.updated_at || item.created_at);
+    state.confirmation = {
+      title: 'Persistence loaded',
+      text: `${state.item.title} restored from backend.`,
+      tone: 'confirmed'
+    };
+  }
+  setItemLocation();
+}
+
+function hydrateActivity(rows = []) {
+  if (!Array.isArray(rows) || rows.length === 0) return;
+  state.activity = rows.slice(0, 7).map(row => ({
+    action: row.action || 'Activity',
+    detail: row.details || '',
+    time: isoToLabel(row.created_at)
+  }));
+  state.log = rows.slice(0, 8).map(row => [row.action || 'Activity', 'Backend', row.details || '', isoToLabel(row.created_at)]);
+}
+
+async function loadFromBackend() {
+  if (!apiState.enabled) {
+    apiState.error = 'Backend URL not configured';
+    return;
+  }
+  try {
+    apiState.loading = true;
+    const [items, activity] = await Promise.all([
+      apiRequest('/items?limit=50'),
+      apiRequest('/activity?limit=50')
+    ]);
+    if (Array.isArray(items) && items.length) {
+      hydrateActiveItem(items[0], true);
+      state.sentItems = items.filter(item => item.state === 'Sent').map(item => ({
+        ...item,
+        time: isoToLabel(item.updated_at || item.created_at)
+      }));
+      $('itemType').value = state.item.type || 'Note';
+      $('itemTitle').value = state.item.title || '';
+      $('itemContent').value = state.item.content || '';
+    }
+    hydrateActivity(activity);
+    apiState.online = true;
+    apiState.loadedFromBackend = true;
+    apiState.error = '';
+  } catch (error) {
+    apiState.online = false;
+    apiState.error = error.message || 'Backend unavailable';
+    updateContinuity('Backend offline', 'Frontend is running locally. Persistence will resume when the deployed backend is reachable.', 'blocked-confirm');
+  } finally {
+    apiState.loading = false;
+  }
+}
+
+async function setState(next, shouldLog = true, actionLabel = `State changed: ${next}`) {
   captureItem();
   state.current = next;
   setItemLocation();
@@ -150,11 +338,14 @@ function setState(next, shouldLog = true, actionLabel = `State changed: ${next}`
   updateContinuity(actionLabel, `${state.item.title} is now in ${state.item.location}.`, next === 'Blocked' ? 'blocked-confirm' : next === 'Archived' || next === 'Approved' ? 'confirmed' : '');
   updateReviewCopy();
   render();
+  await persistItemPatch({ state: next, channel: state.item.channel });
+  await recordActivity(next.toLowerCase(), `${state.item.title} moved to ${state.item.location}.`);
+  render();
 }
 
-function approveItem() {
+async function approveItem() {
   if (state.current === 'New') {
-    suggestDestination();
+    await suggestDestination();
   }
   state.current = 'Approved';
   setItemLocation();
@@ -162,10 +353,13 @@ function approveItem() {
   updateContinuity('Approved', `${state.item.title} approved for ${state.item.channel}. Next step: send.`, 'confirmed');
   updateReviewCopy();
   render();
+  await persistItemPatch({ state: 'Approved', channel: state.item.channel });
+  await recordActivity('approved', `${state.item.title} approved for ${state.item.channel}.`);
+  render();
 }
 
-function sendItem() {
-  if (state.current === 'New') suggestDestination();
+async function sendItem() {
+  if (state.current === 'New') await suggestDestination();
   if (state.current === 'Review') {
     state.current = 'Approved';
     addLog('Approval Captured', 'Admin Operator', `Auto-approved routing to ${state.item.channel} before send`);
@@ -177,14 +371,21 @@ function sendItem() {
   updateContinuity('Sent', `${state.item.title} was pushed into ${state.item.channel}. Location: ${state.item.location}.`, 'confirmed');
   updateReviewCopy();
   render();
+  await persistItemPatch({ state: 'Sent', channel: state.item.channel });
+  await recordActivity('sent', `${state.item.title} pushed into ${state.item.channel}.`);
+  render();
 }
 
-function archiveItem() {
+async function archiveItem() {
   state.current = 'Archived';
+  state.item.channel = 'Archive';
   setItemLocation();
   addLog('Item Archived', 'Admin Operator', 'Item closed and preserved in Archive');
   updateContinuity('Archived', `${state.item.title} moved to Archive / Closed.`, 'confirmed');
   updateReviewCopy();
+  render();
+  await persistItemPatch({ state: 'Archived', channel: 'Archive' });
+  await recordActivity('archived', `${state.item.title} moved to Archive / Closed.`);
   render();
 }
 
@@ -358,5 +559,12 @@ document.querySelectorAll('[data-main-action]').forEach(btn => {
   });
 });
 
-updateReviewCopy();
-render();
+async function initWcc() {
+  updateReviewCopy();
+  render();
+  await loadFromBackend();
+  updateReviewCopy();
+  render();
+}
+
+initWcc();

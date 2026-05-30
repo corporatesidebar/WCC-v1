@@ -12,7 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 TABLE = os.getenv("SUPABASE_TASKS_TABLE", "wcc_tasks")
 
-app = FastAPI(title="WCC Core Thread Workflow", version="1.2.0")
+app = FastAPI(title="WCC Core Thread Workflow", version="1.2.3")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -45,8 +45,14 @@ class Activity(BaseModel):
 
 class FileRef(BaseModel):
     filename: str
+    display_name: Optional[str] = ""
     type: Optional[str] = ""
     note: Optional[str] = ""
+    size: Optional[int] = 0
+    status: Optional[str] = "complete"
+    progress: Optional[int] = 100
+    data_url: Optional[str] = ""
+    created_at: str = Field(default_factory=now)
 
 class Participant(BaseModel):
     name: str
@@ -137,7 +143,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.2-core-thread-workflow", "backend_status": "connected", "database_status": "supabase" if supabase_enabled() else "memory-fallback"}
+    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.2.3-qa-fix-batch-3", "backend_status": "connected", "database_status": "supabase" if supabase_enabled() else "memory-fallback"}
 
 @app.get("/tasks")
 async def list_tasks():

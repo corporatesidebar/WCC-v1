@@ -18,3 +18,11 @@
 16. Open Archive from the left navigation.
 17. Confirm archived task remains retrievable.
 18. Use Search to find the task by task text, comment, participant, or file name.
+
+
+## V1.2 QA Fix Batch 3
+- Search remains in the left navigation area with clean exit behavior.
+- Task-thread files now support upload progress feedback, persisted file references/data URLs, task files, latest files, and downloads using readable WCC filenames.
+- Comment filters were not added; thread comments remain full chronological conversation history.
+- Right sidebar uses Task Files for selected task files and Latest Files for global recent files.
+- System Health / TEST Environment now display operational status from /health and auto-refresh without manual test-note inputs.

@@ -1,21 +1,26 @@
-# WCC V1 — Task Thread / Forum Model
+# WCC V1.1 Functional Sections
 
-Functional WCC V1 build preserving the locked layout while changing the functional model from one-off task forms to task threads.
+Functional WCC Communication Management Infrastructure using the locked WCC layout.
 
-## Includes
+Model preserved:
+Category / Digital Team Member → Task Thread → Comments / Replies → Files / Status / Activity → Complete / Archive.
 
-- Compact Add New Task bar preserved
-- Task thread creation by category / digital team member
-- Today view with active task threads, newest first
-- Thread view with original message, comments / replies, files, status, activity, participants
-- Complete / Archive flow
-- Supabase persistence with localStorage fallback
+## Included
+- frontend/index.html
+- frontend/styles.css
+- frontend/app.js
+- backend/main.py
+- backend/requirements.txt
+- supabase_schema.sql
+- DEPLOYMENT_NOTES.md
+- TEST_CHECKLIST.md
 
-## Files
-
-- `frontend/index.html`
-- `frontend/styles.css`
-- `frontend/app.js`
-- `backend/main.py`
-- `backend/requirements.txt`
-- `supabase_schema.sql`
+## Functional Areas
+- New Task opens task thread creation
+- Search searches task/thread/comment/file/test/participant data
+- Files shows file references across tasks
+- Recents opens selected thread
+- View All shows active and archived task threads
+- Thread view supports comments/replies, complete, archive
+- Right column updates from selected task context
+- Status, files, participants, activity, and test entries persist

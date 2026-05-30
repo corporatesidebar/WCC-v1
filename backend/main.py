@@ -12,7 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 TABLE = os.getenv("SUPABASE_TASKS_TABLE", "wcc_tasks")
 
-app = FastAPI(title="WCC Thread Model V1", version="1.1.0")
+app = FastAPI(title="WCC Thread Model V1", version="1.1.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,6 +52,12 @@ class Participant(BaseModel):
     name: str
     role: Optional[str] = ""
 
+class TestEntry(BaseModel):
+    label: str
+    note: Optional[str] = ""
+    status: Optional[str] = "GOOD"
+    created_at: str = Field(default_factory=now)
+
 class Comment(BaseModel):
     text: str
     author: Optional[str] = "WW"
@@ -69,6 +75,7 @@ class TaskIn(BaseModel):
     files: List[FileRef] = []
     participants: List[Participant] = []
     activity: List[Activity] = []
+    test_entries: List[TestEntry] = []
 
 class Task(TaskIn):
     id: str
@@ -90,6 +97,7 @@ def normalize_task(t: Dict[str, Any]) -> Dict[str, Any]:
     t["files"] = t.get("files") or []
     t["participants"] = t.get("participants") or []
     t["activity"] = t.get("activity") or []
+    t["test_entries"] = t.get("test_entries") or []
     return t
 
 async def sb_get_all() -> List[Dict[str, Any]]:
@@ -126,7 +134,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-thread-model-v1"}
+    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.1-functional-sections"}
 
 @app.get("/tasks")
 async def list_tasks():

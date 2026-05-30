@@ -1,195 +1,162 @@
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from uuid import UUID
+from uuid import uuid4
 
 import httpx
-from fastapi import FastAPI, HTTPException, Path
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-APP_VERSION = "wcc-v1-backend-setup"
-
 SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "")
-SUPABASE_KEY = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
+TABLE = os.getenv("SUPABASE_TASKS_TABLE", "wcc_tasks")
 
-ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")
-    if origin.strip()
-]
-
-app = FastAPI(
-    title="WCC Backend",
-    version=APP_VERSION,
-    description="Lean persistence backend for Workflow Command Center V1.",
-)
-
+app = FastAPI(title="WCC Functional V1", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,
+    allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+memory: Dict[str, Dict[str, Any]] = {}
 
-class ItemCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=180)
-    content: str = Field(default="", max_length=12000)
-    type: str = Field(default="note", max_length=40)
-    channel: str = Field(default="Governance", max_length=80)
-    state: str = Field(default="New", max_length=40)
-    short_version: str = Field(default="", max_length=1200)
-    long_version: str = Field(default="", max_length=12000)
-    must_read: str = Field(default="", max_length=2000)
-
-
-class ItemPatch(BaseModel):
-    title: Optional[str] = Field(default=None, min_length=1, max_length=180)
-    content: Optional[str] = Field(default=None, max_length=12000)
-    type: Optional[str] = Field(default=None, max_length=40)
-    channel: Optional[str] = Field(default=None, max_length=80)
-    state: Optional[str] = Field(default=None, max_length=40)
-    short_version: Optional[str] = Field(default=None, max_length=1200)
-    long_version: Optional[str] = Field(default=None, max_length=12000)
-    must_read: Optional[str] = Field(default=None, max_length=2000)
-
-
-class ActivityCreate(BaseModel):
-    item_id: Optional[UUID] = None
-    action: str = Field(..., min_length=1, max_length=80)
-    details: str = Field(default="", max_length=4000)
-
-
-def utc_now_iso() -> str:
+def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def supabase_enabled() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
 
-def require_supabase() -> None:
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        raise HTTPException(
-            status_code=503,
-            detail="Supabase is not configured. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY.",
-        )
-
-
-def supabase_headers(prefer: Optional[str] = None) -> Dict[str, str]:
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
+def headers() -> Dict[str, str]:
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
         "Content-Type": "application/json",
+        "Prefer": "return=representation",
     }
-    if prefer:
-        headers["Prefer"] = prefer
-    return headers
 
+class Activity(BaseModel):
+    text: str
+    created_at: str = Field(default_factory=now)
 
-async def sb_get(table: str, query: str = "") -> List[Dict[str, Any]]:
-    require_supabase()
-    url = f"{SUPABASE_URL}/rest/v1/{table}{query}"
+class FileRef(BaseModel):
+    filename: str
+    type: Optional[str] = ""
+    note: Optional[str] = ""
+
+class Participant(BaseModel):
+    name: str
+    role: Optional[str] = ""
+
+class TaskIn(BaseModel):
+    title: str
+    sender: Optional[str] = ""
+    destination: Optional[str] = ""
+    message: Optional[str] = ""
+    notes: Optional[str] = ""
+    status: Optional[str] = "New"
+    files: List[FileRef] = []
+    participants: List[Participant] = []
+    activity: List[Activity] = []
+
+class Task(TaskIn):
+    id: str
+    created_at: str
+    updated_at: str
+
+async def sb_get_all() -> List[Dict[str, Any]]:
     async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.get(url, headers=supabase_headers())
-    if response.status_code >= 400:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
-    return response.json()
+        r = await client.get(f"{SUPABASE_URL}/rest/v1/{TABLE}?select=*&order=updated_at.desc", headers=headers())
+        r.raise_for_status()
+        return r.json()
 
-
-async def sb_insert(table: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    require_supabase()
-    url = f"{SUPABASE_URL}/rest/v1/{table}"
+async def sb_get(task_id: str) -> Optional[Dict[str, Any]]:
     async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.post(url, headers=supabase_headers("return=representation"), json=payload)
-    if response.status_code >= 400:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
-    data = response.json()
-    return data[0] if data else {}
+        r = await client.get(f"{SUPABASE_URL}/rest/v1/{TABLE}?id=eq.{task_id}&select=*", headers=headers())
+        r.raise_for_status()
+        data = r.json()
+        return data[0] if data else None
 
-
-async def sb_patch(table: str, row_id: UUID, payload: Dict[str, Any]) -> Dict[str, Any]:
-    require_supabase()
-    url = f"{SUPABASE_URL}/rest/v1/{table}?id=eq.{row_id}"
+async def sb_insert(task: Dict[str, Any]) -> Dict[str, Any]:
     async with httpx.AsyncClient(timeout=20) as client:
-        response = await client.patch(url, headers=supabase_headers("return=representation"), json=payload)
-    if response.status_code >= 400:
-        raise HTTPException(status_code=response.status_code, detail=response.text)
-    data = response.json()
-    if not data:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return data[0]
+        r = await client.post(f"{SUPABASE_URL}/rest/v1/{TABLE}", headers=headers(), json=task)
+        r.raise_for_status()
+        return r.json()[0]
 
+async def sb_update(task_id: str, task: Dict[str, Any]) -> Dict[str, Any]:
+    async with httpx.AsyncClient(timeout=20) as client:
+        r = await client.patch(f"{SUPABASE_URL}/rest/v1/{TABLE}?id=eq.{task_id}", headers=headers(), json=task)
+        r.raise_for_status()
+        data = r.json()
+        if not data:
+            raise HTTPException(status_code=404, detail="Task not found")
+        return data[0]
 
 @app.get("/")
-async def root() -> Dict[str, Any]:
-    return {
-        "service": "WCC Backend",
-        "version": APP_VERSION,
-        "status": "running",
-        "endpoints": ["/health", "/items", "/activity"],
-    }
-
+def root():
+    return {"app": "WCC", "status": "running", "supabase": supabase_enabled()}
 
 @app.get("/health")
-async def health() -> Dict[str, Any]:
-    return {
-        "ok": True,
-        "version": APP_VERSION,
-        "supabase_configured": bool(SUPABASE_URL and SUPABASE_KEY),
-        "time": utc_now_iso(),
-    }
+def health():
+    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-functional-v1"}
 
+@app.get("/tasks")
+async def list_tasks():
+    if supabase_enabled():
+        try:
+            return {"tasks": await sb_get_all()}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Supabase read failed: {e}")
+    return {"tasks": sorted(memory.values(), key=lambda x: x.get("updated_at", ""), reverse=True)}
 
-@app.get("/items")
-async def get_items(limit: int = 100) -> List[Dict[str, Any]]:
-    safe_limit = max(1, min(limit, 500))
-    return await sb_get("wcc_items", f"?select=*&order=updated_at.desc&limit={safe_limit}")
+@app.get("/tasks/{task_id}")
+async def read_task(task_id: str):
+    if supabase_enabled():
+        task = await sb_get(task_id)
+        if not task: raise HTTPException(status_code=404, detail="Task not found")
+        return {"task": task}
+    if task_id not in memory: raise HTTPException(status_code=404, detail="Task not found")
+    return {"task": memory[task_id]}
 
+@app.post("/tasks")
+async def create_task(payload: TaskIn):
+    t = payload.model_dump()
+    timestamp = now()
+    t.update({"id": str(uuid4()), "created_at": timestamp, "updated_at": timestamp})
+    if not t.get("activity"):
+        t["activity"] = [{"text": "task created", "created_at": timestamp}]
+    if supabase_enabled():
+        try:
+            return {"task": await sb_insert(t)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Supabase insert failed: {e}")
+    memory[t["id"]] = t
+    return {"task": t}
 
-@app.post("/items")
-async def create_item(item: ItemCreate) -> Dict[str, Any]:
-    payload = item.model_dump()
-    created = await sb_insert("wcc_items", payload)
-    await sb_insert(
-        "wcc_activity",
-        {
-            "item_id": created.get("id"),
-            "action": "item created",
-            "details": f"Created item in {created.get('channel', item.channel)} with state {created.get('state', item.state)}.",
-        },
-    )
-    return created
+@app.put("/tasks/{task_id}")
+async def update_task(task_id: str, payload: TaskIn):
+    existing = await sb_get(task_id) if supabase_enabled() else memory.get(task_id)
+    if not existing: raise HTTPException(status_code=404, detail="Task not found")
+    t = payload.model_dump()
+    t["id"] = task_id
+    t["created_at"] = existing.get("created_at", now())
+    t["updated_at"] = now()
+    if supabase_enabled():
+        try:
+            return {"task": await sb_update(task_id, t)}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Supabase update failed: {e}")
+    memory[task_id] = t
+    return {"task": t}
 
-
-@app.patch("/items/{id}")
-async def update_item(id: UUID = Path(...), patch: ItemPatch = None) -> Dict[str, Any]:
-    payload = patch.model_dump(exclude_unset=True) if patch else {}
-    if not payload:
-        raise HTTPException(status_code=400, detail="No fields provided for update")
-    payload["updated_at"] = utc_now_iso()
-    updated = await sb_patch("wcc_items", id, payload)
-    changed = ", ".join(payload.keys())
-    await sb_insert(
-        "wcc_activity",
-        {
-            "item_id": str(id),
-            "action": "item updated",
-            "details": f"Updated fields: {changed}.",
-        },
-    )
-    return updated
-
-
-@app.get("/activity")
-async def get_activity(limit: int = 100) -> List[Dict[str, Any]]:
-    safe_limit = max(1, min(limit, 500))
-    return await sb_get("wcc_activity", f"?select=*&order=created_at.desc&limit={safe_limit}")
-
-
-@app.post("/activity")
-async def create_activity(activity: ActivityCreate) -> Dict[str, Any]:
-    payload = activity.model_dump()
-    if payload.get("item_id") is not None:
-        payload["item_id"] = str(payload["item_id"])
-    return await sb_insert("wcc_activity", payload)
+@app.delete("/tasks/{task_id}")
+async def delete_task(task_id: str):
+    if supabase_enabled():
+        async with httpx.AsyncClient(timeout=20) as client:
+            r = await client.delete(f"{SUPABASE_URL}/rest/v1/{TABLE}?id=eq.{task_id}", headers=headers())
+            r.raise_for_status()
+        return {"deleted": True}
+    memory.pop(task_id, None)
+    return {"deleted": True}

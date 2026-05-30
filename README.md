@@ -1,17 +1,35 @@
-# WCC V1 — Workflow Organization Refinement
+# WCC Functional V1
 
-Frontend-only refinement. No backend changes, no architecture changes, no AI.
+Locked-layout implementation for WCC Communication Management Infrastructure.
 
-## Applied
-- Reorganized visible workflow hierarchy around: My Actions, Testing / Results, Waiting On, Governance.
-- Strengthened executive cognition hierarchy and section separation.
-- Preserved existing 4-column WCC layout and backend integration.
-- Verified frontend backend URL is set in `frontend/index.html`:
-  `https://wcc-backend-f305.onrender.com`
+## Frontend
+- `frontend/index.html`
+- `frontend/styles.css`
+- `frontend/app.js`
 
-## Deployment Test
-1. Deploy updated frontend.
-2. Add item.
-3. Refresh page and confirm persistence.
-4. Change status.
-5. Refresh page and confirm state/channel/activity persistence remains.
+Set the backend URL in `frontend/app.js`:
+
+```js
+const API_BASE = window.WCC_API_BASE || 'https://your-wcc-backend.onrender.com';
+```
+
+## Backend
+- FastAPI
+- Supabase REST persistence
+- Local in-memory fallback if Supabase env vars are not set
+
+Required Render environment variables:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_TASKS_TABLE=wcc_tasks
+```
+
+Start locally:
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload
+```

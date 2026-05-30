@@ -1,18 +1,40 @@
-# WCC V1.2 QA Fix Batch 4
+# WCC V1 — Phase 1 Complete
 
-Patch-only build for the locked WCC Communication Management Infrastructure layout.
+Communication Management Infrastructure — Phase 1 patch.
 
-Core model preserved:
+## Scope (this package)
 
-Category / Digital Team Member → Task Thread → Comments / Replies → Files → Activity → Participants → Complete → Archive
+- Comments (unlimited, chronological thread)
+- Files (in-thread timeline with uploads)
+- Downloads (real uploaded content)
+- Complete → Archive (immediate, no refresh)
 
-## Batch 4 fixes
+## Not included (Phase 2+)
 
-- Latest Activity now displays activity only.
-- Latest Files displays recent files across tasks using short WCC system filenames.
-- File downloads use stored uploaded file data when available.
-- Top upload arrow removed.
-- Left-nav Search opens cleanly in the sidebar without a separate Search header.
-- Completing a task immediately archives it, removes it from Today’s Tasks, and updates Archive without refresh.
-- File-level status controls/text removed.
-- Complete applies only to the full task/thread.
+- Search UX
+- Recents cleanup
+- Full Supabase persistence verification
+- System Health panel consolidation
+- Layout recap cards
+
+## Quick start (local)
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+Serve `frontend/` with any static server and set API base if needed:
+
+```js
+localStorage.setItem('WCC_API_BASE', 'http://127.0.0.1:8000');
+```
+
+## QA
+
+Run `TEST_CHECKLIST.md` before sign-off.
+
+## Version
+
+`wcc-v1.2.5-phase1`

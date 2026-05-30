@@ -1,0 +1,28 @@
+feat(wcc): complete Phase 1 — thread comments, files, downloads, archive
+
+Implement WCC V1 Phase 1 scope only: core task thread loop and lifecycle.
+
+Comments:
+- Support unlimited chronological comments per task
+- Remove In Progress auto-status on comment add
+- Rename section to Comments; remove inline comment editing
+
+Files:
+- Show uploads in thread timeline alongside comments (file_index linking)
+- Remove separate Files block from thread view
+- Keep short system filenames (1-v1-WW pattern)
+
+Downloads:
+- Download File uses stored data_url with real uploaded content
+- Merge local file data when backend response strips data_url
+
+Complete → Archive:
+- Remove In Progress button from thread header
+- Confirm prompt on complete; archive full task immediately
+- Archive view updates without manual refresh
+
+Backend:
+- normalize_file preserves data_url on read/write
+- Bump version to wcc-v1.2.5-phase1
+
+Out of scope: search, recents, system health cleanup, Supabase deploy hardening (Phase 2+).

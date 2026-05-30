@@ -17,14 +17,62 @@ async function api(path, opts={}){const res=await fetch(API_BASE+path,{headers:{
 function titleFrom(text=''){const clean=String(text).trim().replace(/\s+/g,' '); return clean.length>72?clean.slice(0,69)+'...':(clean||'Untitled task');}
 function guessCategory(text=''){const s=String(text).toLowerCase(); if(/design|creative|figma|style|layout|png|image/.test(s)) return 'Emily / Design'; if(/frontend|html|css|javascript|ui|button|click/.test(s)) return 'Sarah / Frontend'; if(/backend|api|fastapi|database|supabase|server|endpoint/.test(s)) return 'Alex / Backend'; if(/test|qa|bug|fix|health|deploy/.test(s)) return 'James / Testing'; if(/strategy|growth|plan|market/.test(s)) return 'Sir Homie / Strategy'; if(/governance|policy|approval|risk/.test(s)) return 'Commander / Governance'; return DEFAULT_CATEGORY;}
 function normalizeStatus(v){if(['Done','Complete','Archived'].includes(v)) return 'Archived'; if(v==='In Progress') return 'In Progress'; return 'New';}
-function normalizeTask(t={}){const ts=nowISO(); const msg=t.message||t.title||''; const task={id:t.id||crypto.randomUUID(),title:t.title||titleFrom(msg),category:t.category||guessCategory(msg),sender:t.sender||'Will',destination:t.destination||t.category||guessCategory(msg),message:msg,status:normalizeStatus(t.status),comments:Array.isArray(t.comments)?t.comments:[],files:Array.isArray(t.files)?t.files:[],participants:Array.isArray(t.participants)?t.participants:[],activity:Array.isArray(t.activity)?t.activity:[],test_entries:Array.isArray(t.test_entries)?t.test_entries:[],created_at:t.created_at||ts,updated_at:t.updated_at||ts}; task.files=task.files.map((f,i)=>normalizeFile(f,i)); return task;}
+function normalizeTask(t={}){const ts=nowISO(); const msg=t.message||t.title||''; const task={id:t.id||crypto.randomUUID(),title:t.title||titleFrom(msg),category:t.category||guessCategory(msg),sender:t.sender||'Will',destination:t.destination||t.category||guessCategory(msg),message:msg,status:normalizeStatus(t.status),comments:Array.isArray(t.comments)?t.comments:[],files:Array.isArray(t.files)?t.files:[],participants:Array.isArray(t.participants)?t.participants:[],activity:Array.isArray(t.activity)?t.activity:[],test_entries:Array.isArray(t.test_entries)?t.test_entries:[],created_at:t.created_at||ts,updated_at:t.updated_at||ts}; task.files=task.files.map((f,i)=>normalizeFile(f,i)); task.comments=task.comments.map(c=>({...c,file_index:c.file_index!=null?Number(c.file_index):undefined})); return task;}
 function selected(){return state.tasks.find(t=>t.id===state.selectedId)||null;}
 function activeTasks(){return state.tasks.filter(t=>t.status!=='Archived').sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));}
 function archivedTasks(){return state.tasks.filter(t=>t.status==='Archived').sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));}
 function activity(text){return {text,created_at:nowISO()};}
 function payload(t){return {...t,status:t.status};}
-async function persistTask(t){t.updated_at=nowISO(); localSave(); try{const r=await api('/tasks/'+t.id,{method:'PUT',body:JSON.stringify(payload(t))}); const nt=normalizeTask(r.task); state.tasks=state.tasks.map(x=>x.id===nt.id?nt:x); localSave(); return nt;}catch(e){console.warn(e); localSave(); return t;}}
-async function loadTasks(){state.tasks=localLoad().map(normalizeTask); render(); try{const r=await api('/tasks'); if(Array.isArray(r.tasks)){state.tasks=r.tasks.map(normalizeTask); localSave(); if(state.selectedId && !state.tasks.find(t=>t.id===state.selectedId)) state.selectedId=null;}}catch(e){console.warn('backend unavailable, using local cache',e);} await loadHealth(); render();}
+function mergeTaskFromLocal(remote, local){
+  const merged=normalizeTask({...remote});
+  if(local.status==='Archived') merged.status='Archived';
+  if((local.comments||[]).length>(merged.comments||[]).length) merged.comments=local.comments;
+  if((local.activity||[]).length>(merged.activity||[]).length) merged.activity=local.activity;
+  const localFiles=local.files||[];
+  const count=Math.max(localFiles.length,(merged.files||[]).length);
+  merged.files=Array.from({length:count},(_,i)=>{
+    const lf=localFiles[i]||{};
+    const rf=(merged.files||[])[i]||{};
+    return normalizeFile({...rf,...lf,data_url:lf.data_url||rf.data_url||''},i);
+  });
+  return merged;
+}
+async function persistTask(t){
+  const snapshot=normalizeTask({...t});
+  snapshot.updated_at=nowISO();
+  localSave();
+  try{
+    const r=await api('/tasks/'+t.id,{method:'PUT',body:JSON.stringify(payload(snapshot))});
+    const nt=mergeTaskFromLocal(normalizeTask(r.task),snapshot);
+    state.tasks=state.tasks.map(x=>x.id===nt.id?nt:x);
+    localSave();
+    return nt;
+  }catch(e){
+    console.warn(e);
+    return snapshot;
+  }
+}
+async function loadTasks(){
+  const cached=localLoad().map(normalizeTask);
+  state.tasks=cached;
+  render();
+  try{
+    const r=await api('/tasks');
+    if(Array.isArray(r.tasks)){
+      state.tasks=r.tasks.map(remote=>{
+        const normRemote=normalizeTask(remote);
+        const local=cached.find(t=>t.id===normRemote.id);
+        return local?mergeTaskFromLocal(normRemote,local):normRemote;
+      });
+      localSave();
+      if(state.selectedId && !state.tasks.find(t=>t.id===state.selectedId)) state.selectedId=null;
+    }
+  }catch(e){
+    console.warn('backend unavailable, using local cache',e);
+  }
+  await loadHealth();
+  render();
+}
 async function loadHealth(){try{const h=await api('/health'); state.health={...h,api:true,checked_at:nowISO()};}catch(e){state.health={api:false,checked_at:nowISO(),supabase_configured:false};}}
 
 function cleanExt(name=''){const m=String(name).match(/\.([a-z0-9]{2,8})$/i); return m?m[1].toLowerCase():'file';}
@@ -32,13 +80,107 @@ function nextFileSystemName(ext='file'){let count=0; state.tasks.forEach(t=>coun
 function normalizeFile(f={},i=0){const ext=cleanExt(f.filename||f.name||f.display_name||'file'); const existing=String(f.display_name||''); const display=/^\d+-v\d+-WW\.[a-z0-9]+$/i.test(existing)?existing:`${i+1}-v1-WW.${ext}`; return {...f,filename:f.filename||f.name||display,display_name:display,type:f.type||'file',note:f.note||'',size:f.size||0,data_url:f.data_url||'',created_at:f.created_at||nowISO()};}
 function readFileAsDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader(); reader.onload=()=>resolve(reader.result); reader.onerror=reject; reader.readAsDataURL(file);});}
 async function fileRef(input,note='attached to task thread',onProgress){const f=input?.files?.[0]; if(!f) return null; onProgress?.('Uploading file…'); let dataUrl=''; try{dataUrl=await readFileAsDataUrl(f);}catch(e){console.warn('file read failed',e);} onProgress?.('Upload complete'); const ref=normalizeFile({filename:f.name,display_name:nextFileSystemName(cleanExt(f.name)),type:f.type||'file',size:f.size||0,note,data_url:dataUrl,created_at:nowISO()}); input.value=''; return ref;}
-function downloadFileRef(file){if(!file) return; const name=fileLabelRaw(file); const a=document.createElement('a'); if(file.data_url){a.href=file.data_url;} else {const body=`WCC file reference: ${name}\nOriginal filename: ${file.filename||'unknown'}\nNo embedded file data was stored for this older reference.`; a.href=URL.createObjectURL(new Blob([body],{type:'text/plain'})); setTimeout(()=>URL.revokeObjectURL(a.href),1200);} a.download=name; document.body.appendChild(a); a.click(); a.remove();}
+function downloadFileRef(file){
+  if(!file) return toast('File not found');
+  const name=fileLabelRaw(file);
+  const a=document.createElement('a');
+  if(file.data_url){
+    a.href=file.data_url;
+    a.download=name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return;
+  }
+  toast('File data unavailable for this upload');
+}
 function fileLabelRaw(f){return f?.display_name || f?.filename || 'WCC-FILE.file';}
 function fileLabel(f){return escapeHtml(fileLabelRaw(f));}
 
-async function createTaskFromQuickInput(){const input=$('quickTaskInput'); const text=input.value.trim(); const f=await fileRef($('quickFileInput'),'attached at task creation',(m)=>toast(m)); if(!text && !f){input.focus();return;} const ts=nowISO(); const category=guessCategory(text); const t=normalizeTask({title:titleFrom(text||f.filename),message:text||f.filename,category,destination:category,status:'New',files:f?[f]:[],participants:[],comments:[],activity:[activity('task thread created')],created_at:ts,updated_at:ts}); state.tasks.unshift(t); state.selectedId=t.id; state.view='thread'; input.value=''; localSave(); render(); try{const r=await api('/tasks',{method:'POST',body:JSON.stringify(payload(t))}); const nt=normalizeTask(r.task); state.tasks=state.tasks.map(x=>x.id===t.id?nt:x); state.selectedId=nt.id; localSave(); render(); toast('Task thread created');}catch(e){console.warn(e); toast('Task saved locally');}}
-async function patchSelected(changes, activityText){const t=selected(); if(!t) return; const updated=normalizeTask({...t,...changes,updated_at:nowISO()}); if(activityText) updated.activity=[...(updated.activity||[]),activity(activityText)]; state.tasks=state.tasks.map(x=>x.id===t.id?updated:x); render(); await persistTask(updated); render();}
-async function completeSelected(){const t=selected(); if(!t) return; if(!confirm('Are you sure you want to complete this task?')) return; const updated=normalizeTask({...t,status:'Archived',activity:[...(t.activity||[]),activity('task completed and archived')],updated_at:nowISO()}); state.tasks=state.tasks.map(x=>x.id===t.id?updated:x); state.selectedId=null; state.view='archive'; localSave(); render(); await persistTask(updated); render(); toast('Task archived');}
+async function createTaskFromQuickInput(){
+  const input=$('quickTaskInput');
+  const text=input.value.trim();
+  const f=await fileRef($('quickFileInput'),'attached at task creation',(m)=>toast(m));
+  if(!text && !f){input.focus(); return;}
+  const ts=nowISO();
+  const category=guessCategory(text);
+  const files=f?[f]:[];
+  const comments=f&&!text?[{text:'',author:'Will',created_at:ts,file_index:0}]:[];
+  const t=normalizeTask({title:titleFrom(text||fileLabelRaw(f)),message:text||fileLabelRaw(f),category,destination:category,status:'New',files,participants:[],comments,activity:[activity('task thread created')],created_at:ts,updated_at:ts});
+  state.tasks.unshift(t);
+  state.selectedId=t.id;
+  state.view='thread';
+  input.value='';
+  localSave();
+  render();
+  try{
+    const r=await api('/tasks',{method:'POST',body:JSON.stringify(payload(t))});
+    const nt=mergeTaskFromLocal(normalizeTask(r.task),t);
+    state.tasks=state.tasks.map(x=>x.id===t.id?nt:x);
+    state.selectedId=nt.id;
+    localSave();
+    render();
+    toast('Task thread created');
+  }catch(e){
+    console.warn(e);
+    toast('Task saved locally');
+  }
+}
+async function patchSelected(changes, activityText){
+  const t=selected();
+  if(!t) return null;
+  const updated=normalizeTask({...t,...changes,updated_at:nowISO()});
+  if(activityText) updated.activity=[...(updated.activity||[]),activity(activityText)];
+  state.tasks=state.tasks.map(x=>x.id===t.id?updated:x);
+  localSave();
+  render();
+  await persistTask(updated);
+  render();
+  return selected();
+}
+async function completeSelected(){
+  const t=selected();
+  if(!t) return;
+  if(!confirm('Are you sure you want to complete this task?')) return;
+  const updated=normalizeTask({...t,status:'Archived',activity:[...(t.activity||[]),activity('task completed and archived')],updated_at:nowISO()});
+  state.tasks=state.tasks.map(x=>x.id===t.id?updated:x);
+  state.selectedId=null;
+  state.view='archive';
+  localSave();
+  render();
+  await persistTask(updated);
+  render();
+  toast('Task archived');
+}
+function referencedFileIndexes(comments=[]){const set=new Set(); comments.forEach(c=>{if(c.file_index!=null && c.file_index!=='') set.add(Number(c.file_index));}); return set;}
+function buildThreadTimeline(t){
+  const entries=[];
+  const referenced=referencedFileIndexes(t.comments||[]);
+  (t.comments||[]).forEach((c,i)=>{
+    entries.push({kind:'comment',time:c.created_at||t.created_at,comment:c,commentIndex:i});
+    if(c.file_index!=null && c.file_index!=='' && t.files?.[Number(c.file_index)]) entries[entries.length-1].file=t.files[Number(c.file_index)];
+  });
+  (t.files||[]).forEach((f,i)=>{
+    if(referenced.has(i)) return;
+    entries.push({kind:'file',time:f.created_at||t.created_at,file:f,fileIndex:i});
+  });
+  return entries.sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+}
+function renderTimelineEntry(entry,t){
+  if(entry.kind==='file'){
+    return `<div class="thread-entry thread-entry-file"><div class="thread-file-row"><span>${fileLabel(entry.file)}</span><button class="download-file-btn" data-task-id="${escapeHtml(t.id)}" data-file-index="${entry.fileIndex}" type="button">Download File</button></div><small>File · ${formatDate(entry.time)}</small></div>`;
+  }
+  const c=entry.comment;
+  const hasText=Boolean(String(c.text||'').trim());
+  let html=`<div class="thread-entry thread-entry-comment">`;
+  if(hasText) html+=`<div class="comment-text">${escapeHtml(c.text)}</div>`;
+  if(entry.file){
+    const fi=Number(c.file_index);
+    html+=`<div class="thread-file-attachment"><div class="thread-file-row"><span>${fileLabel(entry.file)}</span><button class="download-file-btn" data-task-id="${escapeHtml(t.id)}" data-file-index="${fi}" type="button">Download File</button></div></div>`;
+  }
+  html+=`<small>${escapeHtml(c.author||'Will')} · ${formatDate(c.created_at)}</small></div>`;
+  return html;
+}
 function navActive(){document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active')); if(state.view==='search') $('searchBtn').classList.add('active'); else if(state.view==='files') $('filesBtn').classList.add('active'); else if(state.view==='archive') $('archiveBtnNav').classList.add('active'); else $('newTaskBtn').classList.add('active'); $('searchResultsBlock').classList.toggle('hidden', state.view!=='search'); document.querySelector('.recents-block')?.classList.toggle('searching', state.view==='search');}
 function taskRow(t){return `<li class="task-card ${t.id===state.selectedId?'active':''}" data-id="${escapeHtml(t.id)}"><strong>${escapeHtml(t.title)}</strong><div class="task-meta"><span>${escapeHtml(t.category)}</span><span class="status-badge">${escapeHtml(t.status)}</span><span>${(t.comments||[]).length} comments</span><span>${(t.files||[]).length} files</span><span>${formatDate(t.updated_at)}</span></div></li>`;}
 function renderRecents(){const list=state.tasks.slice().sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))).slice(0,8); $('recentsList').innerHTML=list.map(t=>`<button class="recent-item ${t.id===state.selectedId?'active':''}" data-id="${escapeHtml(t.id)}"><span>${escapeHtml(t.title)}</span><span class="pin">⌁</span><small>${escapeHtml(t.category)} · ${escapeHtml(t.status)}</small></button>`).join('') || '<p class="empty">No task threads yet.</p>';}
@@ -46,8 +188,46 @@ function searchResults(){const q=state.query.trim().toLowerCase(); if(!q) return
 function renderSearch(){const results=searchResults(); $('searchResultsList').innerHTML= state.query.trim()? (results.map(t=>`<button class="search-row" data-id="${escapeHtml(t.id)}"><span>${escapeHtml(t.title)}</span><small>${escapeHtml(t.category)} · ${(t.comments||[]).length} comments · ${(t.files||[]).length} files</small></button>`).join('') || '<p class="empty">No results.</p>') : '<p class="empty">Type to search task threads, comments, and files.</p>';}
 function renderCenter(){const t=selected(); if(state.view==='thread' && t){renderThread(t);return;} let items=[]; if(state.view==='archive'){ $('taskListHeading').textContent='Archive'; items=archivedTasks(); } else if(state.view==='all'){ $('taskListHeading').textContent='All Task Threads'; items=state.tasks.slice().sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))); } else if(state.view==='files'){ renderFilesCenter(); return; } else { $('taskListHeading').textContent='Today’s Tasks'; items=activeTasks(); } const today=items.filter(t=>new Date(t.created_at).toDateString()===new Date().toDateString()); const older=items.filter(t=>new Date(t.created_at).toDateString()!==new Date().toDateString()); let html=''; if(state.view==='home'){ html += today.map(taskRow).join('') || '<li class="empty">No active task threads yet.</li>'; if(older.length) html += `<h2 class="older-title">10 Tasks that that are a few days old ...</h2>`+older.map(taskRow).join(''); } else html=items.map(taskRow).join('') || '<li class="empty">No task threads found.</li>'; $('centerTaskList').innerHTML=html;}
 function renderFilesCenter(){const files=[]; state.tasks.forEach(t=>(t.files||[]).forEach((f,i)=>files.push({task:t,fileIndex:i,...f}))); $('taskListHeading').textContent='Files'; $('centerTaskList').innerHTML=files.sort((a,b)=>String(b.created_at||b.task.updated_at).localeCompare(String(a.created_at||a.task.updated_at))).map(f=>`<li class="task-card file-row" data-id="${escapeHtml(f.task.id)}"><strong>${fileLabel(f)}</strong><div class="task-meta"><span>${escapeHtml(f.task.title)}</span><span>${escapeHtml(f.type||'file')}</span><span>${escapeHtml(f.note||'task file')}</span></div><button class="download-file-btn" data-task-id="${escapeHtml(f.task.id)}" data-file-index="${f.fileIndex}" type="button">Download</button></li>`).join('') || '<li class="empty">No files yet.</li>';}
-function renderThread(t){$('taskListHeading').textContent='Task Thread'; const comments=(t.comments||[]).map((c,i)=>`<div class="comment-item"><div class="comment-text" contenteditable="true" data-comment-index="${i}">${escapeHtml(c.text)}</div><small>${escapeHtml(c.author||'Will')} · ${formatDate(c.created_at)}</small></div>`).join('') || '<p class="empty">No comments yet. Add the first reply below.</p>'; const files=(t.files||[]).map((f,i)=>`<li class="thread-file-row"><span>- ${fileLabel(f)} ${f.note?'('+escapeHtml(f.note)+')':''}</span><button class="download-file-btn" data-task-id="${escapeHtml(t.id)}" data-file-index="${i}" type="button">Download</button></li>`).join('') || '<li class="empty">No files attached.</li>'; $('centerTaskList').innerHTML=`<li class="thread-card"><div class="thread-header"><div><div id="threadTitle" class="thread-title" contenteditable="true">${escapeHtml(t.title)}</div><select id="threadCategory" class="category-select">${Object.values(CATEGORY_MAP).map(c=>`<option ${c===t.category?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select><div class="task-meta"><span class="status-badge">${escapeHtml(t.status)}</span><span>${(t.comments||[]).length} comments</span><span>${(t.files||[]).length} files</span><span>${formatDate(t.updated_at)}</span></div></div><div class="thread-actions"><button id="progressBtn" class="secondary" type="button">In Progress</button><button id="completeBtn" type="button">Complete</button></div></div><div class="original-message" id="threadMessage" contenteditable="true"><strong>Original Message</strong>${escapeHtml(t.message||'')}</div><div class="comments-title">Comments / Replies</div><div class="comments-list">${comments}</div><form id="commentForm" class="comment-form"><input id="commentInput" class="comment-input" type="text" placeholder="Add another comment / reply..." autocomplete="off" /><label class="file-inline-label">+ file<input id="commentFileInput" class="comment-file" type="file" /></label><button type="submit">Add</button></form><div class="comments-title">Files</div><ul>${files}</ul></li>`; bindThread();}
-function bindThread(){const t=selected(); if(!t) return; $('threadTitle').onblur=()=>{const v=$('threadTitle').innerText.trim(); if(v && v!==selected().title) patchSelected({title:v},'task title updated');}; $('threadMessage').onblur=()=>{const raw=$('threadMessage').innerText.replace(/^Original Message\s*/,'').trim(); if(raw!==selected().message) patchSelected({message:raw,title:selected().title||titleFrom(raw)},'original message updated');}; $('threadCategory').onchange=e=>patchSelected({category:e.target.value,destination:e.target.value},'category updated'); document.querySelectorAll('[data-comment-index]').forEach(el=>el.onblur=()=>{const current=selected(); const i=Number(el.dataset.commentIndex); const comments=[...(current.comments||[])]; const text=el.innerText.trim(); if(comments[i] && text && comments[i].text!==text){comments[i]={...comments[i],text,updated_at:nowISO()}; patchSelected({comments},'comment updated');}}); $('commentForm').onsubmit=async e=>{e.preventDefault(); const current=selected(); const input=$('commentInput'); const fileInput=$('commentFileInput'); const text=input.value.trim(); const f=await fileRef(fileInput,'attached to comment',(m)=>toast(m)); if(!text && !f){input.focus(); return;} const comments=[...(current.comments||[])]; const files=[...(current.files||[])]; if(text) comments.push({text,author:'Will',created_at:nowISO()}); if(f) files.push(f); input.value=''; await patchSelected({comments,files,status:current.status==='New'?'In Progress':current.status}, f&&text?`comment and file added` : f?`file added`:'comment added'); const next=$('commentInput'); if(next) next.focus();}; $('progressBtn').onclick=()=>patchSelected({status:'In Progress'},'status changed to In Progress'); $('completeBtn').onclick=completeSelected;}
+function renderThread(t){
+  $('taskListHeading').textContent='Task Thread';
+  const timeline=buildThreadTimeline(t);
+  const timelineHtml=timeline.map(entry=>renderTimelineEntry(entry,t)).join('') || '<p class="empty">No comments yet. Add the first reply below.</p>';
+  $('centerTaskList').innerHTML=`<li class="thread-card"><div class="thread-header"><div><div id="threadTitle" class="thread-title" contenteditable="true">${escapeHtml(t.title)}</div><select id="threadCategory" class="category-select">${Object.values(CATEGORY_MAP).map(c=>`<option ${c===t.category?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select><div class="task-meta"><span class="status-badge">${escapeHtml(t.status)}</span><span>${(t.comments||[]).length} comments</span><span>${(t.files||[]).length} files</span><span>${formatDate(t.updated_at)}</span></div></div><div class="thread-actions"><button id="completeBtn" type="button">Complete</button></div></div><div class="original-message" id="threadMessage" contenteditable="true"><strong>Original Message</strong>${escapeHtml(t.message||'')}</div><div class="comments-title">Comments</div><div class="comments-list thread-timeline">${timelineHtml}</div><form id="commentForm" class="comment-form"><input id="commentInput" class="comment-input" type="text" placeholder="Add another comment..." autocomplete="off" /><label class="file-inline-label">+ file<input id="commentFileInput" class="comment-file" type="file" /></label><button type="submit">Add</button></form></li>`;
+  bindThread();
+}
+async function submitCommentForm(e){
+  e.preventDefault();
+  const current=selected();
+  if(!current) return;
+  const input=$('commentInput');
+  const fileInput=$('commentFileInput');
+  const text=input.value.trim();
+  const f=await fileRef(fileInput,'attached to comment',(m)=>toast(m));
+  if(!text && !f){input?.focus(); return;}
+  const comments=[...(current.comments||[])];
+  const files=[...(current.files||[])];
+  let activityText='comment added';
+  if(f){
+    const fileIndex=files.length;
+    files.push(f);
+    comments.push({text,author:'Will',created_at:nowISO(),file_index:fileIndex});
+    activityText=text?'comment and file added':'file added';
+  } else {
+    comments.push({text,author:'Will',created_at:nowISO()});
+  }
+  input.value='';
+  await patchSelected({comments,files,status:current.status},activityText);
+  requestAnimationFrame(()=>$('commentInput')?.focus());
+}
+function bindThread(){
+  const t=selected();
+  if(!t) return;
+  $('threadTitle').onblur=()=>{const v=$('threadTitle').innerText.trim(); if(v && v!==selected()?.title) patchSelected({title:v},'task title updated');};
+  $('threadMessage').onblur=()=>{const raw=$('threadMessage').innerText.replace(/^Original Message\s*/,'').trim(); if(raw!==selected()?.message) patchSelected({message:raw,title:selected()?.title||titleFrom(raw)},'original message updated');};
+  $('threadCategory').onchange=e=>patchSelected({category:e.target.value,destination:e.target.value},'category updated');
+  $('commentForm').onsubmit=submitCommentForm;
+  $('completeBtn').onclick=completeSelected;
+}
 function renderRight(){const t=selected(); const allAct=state.tasks.flatMap(x=>(x.activity||[]).map(a=>({...a,task:x.title}))).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))); $('activityList').innerHTML=(t?(t.activity||[]).slice().reverse():allAct).slice(0,8).map(a=>`<li>- ${escapeHtml(a.text)}${a.task?` · ${escapeHtml(a.task)}`:''}</li>`).join('') || '<li>- No activity yet</li>'; const allFiles=[]; state.tasks.forEach(x=>(x.files||[]).forEach((f,i)=>allFiles.push({...f,task:x.title,taskId:x.id,fileIndex:i,created_at:f.created_at||x.updated_at}))); $('latestFilesList').innerHTML=allFiles.sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,6).map(f=>`<li data-id="${escapeHtml(f.taskId)}"><span>- ${fileLabel(f)} · ${escapeHtml(f.task)}</span><button class="download-file-btn mini" data-task-id="${escapeHtml(f.taskId)}" data-file-index="${f.fileIndex}" type="button">Download</button></li>`).join('') || '<li>- No files yet</li>'; $('taskFilesList').innerHTML=(t?.files||[]).map((f,i)=>`<li data-id="${escapeHtml(t.id)}"><span>- ${fileLabel(f)}${f.note?' ('+escapeHtml(f.note)+')':''}</span><button class="download-file-btn mini" data-task-id="${escapeHtml(t.id)}" data-file-index="${i}" type="button">Download</button></li>`).join('') || '<li>- Select a task to view files</li>'; const h=state.health||{}; $('systemHealthList').innerHTML=`<li>/health - <span class="${h.api?'health-good':'health-warn'}">${h.api?'GOOD':'CHECK'}</span></li><li>Render Status - ${h.api?'Reachable':'Check deploy'}</li><li>Backend Status - ${h.backend_status||h.status||'Unknown'}</li><li>Database Status - ${h.database_status || (h.supabase_configured?'Supabase':'Local fallback')}</li><li>Supabase Status - ${h.supabase_configured?'Configured':'Not configured'}</li>`; $('testList').innerHTML=`<li>health - ${h.api?'GOOD':'CHECK'}</li><li>response - ${h.api?'GOOD':'CHECK'}</li><li>backend - ${escapeHtml(h.backend_status||'Unknown')}</li><li>database - ${escapeHtml(h.database_status||'Unknown')}</li>`; $('participantsList').innerHTML=(t?.participants||[]).map(p=>`<li>- ${escapeHtml(p.name)}</li>`).join('') || '<li>- Select task participants</li>'; $('participantControls').classList.toggle('hidden', !t);}
 function render(){navActive(); renderRecents(); renderSearch(); renderCenter(); renderRight();}
 function openThreadFromEvent(e){const row=e.target.closest('[data-id]'); if(row){state.selectedId=row.dataset.id; state.view='thread'; render();}}

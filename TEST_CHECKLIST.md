@@ -1,15 +1,19 @@
-# WCC QA Checklist
+# QA Round 3 Test Checklist
 
-- Open page: layout matches locked WCC reference.
-- Click New Task or +: modal opens and stays open when clicking outside or changing tabs.
-- Create task with Category, Task Name, Message, optional file reference.
-- Confirm Sender is defaulted and Destination follows Category.
-- Confirm task appears in Today’s Tasks and Recents.
-- Add comments in the thread; refresh; comments remain.
-- Add file reference from comment area; refresh; Attached Files shows selected task file and Latest Files shows global file.
-- Edit original message and a comment; refresh; edits remain.
-- Change status; refresh; status remains.
-- Add participant from predefined list; refresh; participant remains.
-- Use Search; results appear under Search on left and rows open the thread.
-- Click Complete; task leaves Today’s Tasks and appears under Archive.
-- View All opens all task threads cleanly.
+- [ ] WCC logo returns to Home.
+- [ ] Search opens in left navigation; blank search causes no error or file-save window.
+- [ ] Search results are clickable and load task threads.
+- [ ] Quick task input creates a thread immediately with no overlay.
+- [ ] New task appears in Today’s Tasks as `New`.
+- [ ] Add 3 comments to one task; comment input remains usable after each add.
+- [ ] Refresh; task and comments remain.
+- [ ] Attach file during task creation or comment; file appears in thread, Files, Latest Files.
+- [ ] Add multiple predefined participants; refresh; participants remain.
+- [ ] Click In Progress; refresh; status remains.
+- [ ] Click Complete; confirmation appears.
+- [ ] Confirm Complete; task leaves Today and appears in Archive.
+- [ ] Archive link opens completed/archived tasks.
+- [ ] Files link opens all file references.
+- [ ] View All opens all task threads.
+- [ ] System Health refresh works.
+- [ ] Test Environment note saves to selected task.

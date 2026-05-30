@@ -1,129 +1,74 @@
-const API_BASE = window.WCC_API_BASE || 'https://wcc-backend-f305.onrender.com';
-const STATUSES = ['New','In Progress','Waiting','Blocked','Done','Archived'];
-const CATEGORIES = ['Emily / Design & Creative','Sarah / Frontend','Alex / Backend','James / Testing','Commander / Governance','Sir Homie / Strategy'];
-const PARTICIPANTS = ['Will','Emily / Design','Sarah / Frontend','Alex / Backend','James / Testing','Commander / Governance','Sir Homie / Strategy'];
-const USER_SENDER = 'Will / Account Default';
-const fallbackTasks = [
-  'Review and finalize Executive Engine OS navigation structure, hierarchy, user flow behavior, and operational workspace organization',
-  'Audit WCC governance architecture for consistency, accountability, compliance, and scalability requirements',
-  'Refine dashboard typography, spacing, visual hierarchy, cognition flow, and executive user experience',
-  'Document approved product decisions, locked design elements, implementation constraints, and future considerations',
-  'Analyze frontend implementation gaps, inconsistencies, missing functionality, and execution quality issues',
-  'Develop executive workflow mapping for meetings, decisions, proposals, tasks, approvals, and execution',
-  'Review and prioritize outstanding product enhancements, feature requests, and development objectives',
-  'Create operational governance framework covering policies, procedures, accountability, and risk management',
-  'Evaluate business strategy, growth opportunities, market positioning, and competitive advantages',
-  'Prepare implementation roadmap including milestones, dependencies, resources, and execution priorities'
-];
-let state = { tasks: [], selectedId: null, online: false, view: 'today', query: '' };
-const $ = (id) => document.getElementById(id);
+const API_BASE = window.WCC_API_BASE || localStorage.getItem('WCC_API_BASE') || 'https://executive-engine-os.onrender.com';
+const STORE_KEY = 'wcc_v1_1_batch2_threads';
+const STATUSES = ['New','In Progress','Complete','Archived'];
+const TEAM = ['Will','Emily','Sarah','Alex','James','Commander','Sir Homie'];
+const CATEGORY_MAP = {
+  Will:'Will', Emily:'Emily / Design', Sarah:'Sarah / Frontend', Alex:'Alex / Backend', James:'James / Testing', Commander:'Commander / Governance', 'Sir Homie':'Sir Homie / Strategy'
+};
+const DEFAULT_CATEGORY = 'Commander / Governance';
+const $ = id => document.getElementById(id);
 const nowISO = () => new Date().toISOString();
-function uid(){ return crypto.randomUUID ? crypto.randomUUID() : String(Date.now()); }
-function stamp(text){ return { text, created_at: nowISO() }; }
-function comment(text, author='WW'){ return { text, author, created_at: nowISO() }; }
-function escapeHtml(s=''){ return String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
-function selected(){ return state.tasks.find(t => t.id === state.selectedId); }
-function isArchived(t){ return ['Archived','Done'].includes(t.status || ''); }
-function activeTasks(){ return state.tasks.filter(t => !isArchived(t)); }
-function olderActiveTasks(){ const cutoff=Date.now()-24*60*60*1000; return activeTasks().filter(t=>new Date(t.updated_at||t.created_at||0).getTime()<cutoff); }
-function todaysActiveTasks(){ const oldIds=new Set(olderActiveTasks().map(t=>t.id)); return activeTasks().filter(t=>!oldIds.has(t.id)); }
-function normalizeTask(t){
-  t.category = t.category || t.destination || 'Commander / Governance';
-  t.destination = t.destination || t.category;
-  t.sender = t.sender || USER_SENDER;
-  t.message = t.message || t.title || '';
-  t.notes = t.notes || '';
-  t.status = STATUSES.includes(t.status) ? t.status : 'New';
-  t.comments = Array.isArray(t.comments) ? t.comments : [];
-  t.files = Array.isArray(t.files) ? t.files : [];
-  t.participants = Array.isArray(t.participants) ? t.participants : [];
-  t.activity = Array.isArray(t.activity) ? t.activity : [];
-  t.test_entries = Array.isArray(t.test_entries) ? t.test_entries : [];
-  return t;
-}
-function seedSelects(){ $('taskStatus').innerHTML = STATUSES.filter(s=>s!=='Archived').map(s => `<option value="${s}">${s}</option>`).join(''); $('taskCategory').innerHTML = CATEGORIES.map(c => `<option value="${c}">${c}</option>`).join(''); $('participantSelect').innerHTML = PARTICIPANTS.map(p => `<option value="${p}">${p}</option>`).join(''); }
-async function api(path, options={}){ const res = await fetch(API_BASE + path, { headers:{'Content-Type':'application/json'}, ...options }); if(!res.ok) throw new Error(await res.text()); return res.json(); }
-function localLoad(){ return JSON.parse(localStorage.getItem('wcc_tasks_thread_model') || localStorage.getItem('wcc_tasks') || '[]').map(normalizeTask); }
-function localSave(){ localStorage.setItem('wcc_tasks_thread_model', JSON.stringify(state.tasks)); }
-function sortByUpdated(a,b){ return String(b.updated_at||b.created_at||'').localeCompare(String(a.updated_at||a.created_at||'')); }
-async function loadTasks(){
-  try{ const data = await api('/tasks'); state.tasks = (data.tasks || []).map(normalizeTask); state.online = true; localSave(); }
-  catch(e){ state.tasks = localLoad(); state.online = false; }
-  state.tasks.sort(sortByUpdated);
-  render(); checkHealth();
-}
-async function saveTask(task){
-  task = normalizeTask(task); const ts = nowISO();
-  if(state.online){ const saved = await api(`/tasks${task.id ? '/' + task.id : ''}`, { method: task.id ? 'PUT':'POST', body: JSON.stringify(task) }); return normalizeTask(saved.task); }
-  if(!task.id){ task.id = uid(); task.created_at = ts; task.updated_at = ts; if(!task.activity.length) task.activity = [stamp('task thread created')]; } else task.updated_at = ts;
-  const i = state.tasks.findIndex(t=>t.id===task.id); if(i >= 0) state.tasks[i] = task; else state.tasks.unshift(task); localSave(); return task;
-}
-async function updateSelected(patch, activityText){
-  const task = selected(); if(!task) return;
-  const updated = normalizeTask({ ...task, ...patch, updated_at: nowISO() });
-  if(activityText) updated.activity = [...(task.activity||[]), stamp(activityText)];
-  const saved = await saveTask(updated); const i = state.tasks.findIndex(t=>t.id===saved.id);
-  if(i >= 0) state.tasks[i] = saved; else state.tasks.unshift(saved); state.selectedId = saved.id; state.tasks.sort(sortByUpdated); localSave(); render('Saved');
-}
-function render(saveText=''){ renderNav(); renderRecents(); renderCenter(); renderRight(); const s=$('saveState'); if(s){ s.textContent=saveText; setTimeout(()=>s.textContent='',1200); } }
-function renderNav(){ ['newTaskBtn','searchBtn','filesBtn','archiveBtnNav'].forEach(id=>$(id)?.classList.remove('active')); $('searchResultsBlock')?.classList.toggle('hidden', state.view !== 'search'); if(state.view==='search') $('searchBtn')?.classList.add('active'); else if(state.view==='files') $('filesBtn')?.classList.add('active'); else if(state.view==='archive') $('archiveBtnNav')?.classList.add('active'); else $('newTaskBtn')?.classList.add('active'); }
-function renderRecents(){ const items = activeTasks().slice(0,10); $('recentsList').innerHTML = items.map(t => `<button class="recent-item ${t.id===state.selectedId?'active':''}" data-id="${t.id}"><span>${escapeHtml(t.title||'Untitled Thread')}</span><span class="pin">⌁</span></button>`).join('') || '<p class="empty">No active threads yet.</p>'; }
-function renderCenter(){
-  const editBtn=$('editTaskBtn'); editBtn.classList.toggle('hidden', !selected() || ['today','all','search','files'].includes(state.view));
-  if(state.view==='files') return renderFilesView();
-  if(state.view==='search') return renderSearchView();
-  if(state.view==='all') return renderTaskList('All Task Threads', state.tasks);
-  if(state.view==='archive') return renderTaskList('Archive', state.tasks.filter(t=>isArchived(t)));
-  if(state.view==='today' && !state.selectedId){ return state.tasks.length ? renderTodayLists() : renderFallback(); }
-  const t=selected(); if(t) return renderThread(t); renderFallback();
-}
-function renderFallback(){ $('taskListHeading').textContent='10 Tasks that that are a few days old ...'; $('centerTaskList').className=''; $('centerTaskList').innerHTML=fallbackTasks.map(t=>`<li>${escapeHtml(t)}</li>`).join(''); }
-function renderTaskList(title,tasks){ $('taskListHeading').textContent=title; $('centerTaskList').className='thread-list'; $('centerTaskList').innerHTML=tasks.map(threadRow).join('') || '<li class="empty-row">No task threads found.</li>'; }
-function renderTodayLists(){ const today=todaysActiveTasks(); const older=olderActiveTasks(); $('taskListHeading').textContent='Today’s Tasks'; $('centerTaskList').className='thread-list today-thread-list'; $('centerTaskList').innerHTML = `<li class="section-box-title">Today’s Tasks</li>` + (today.map(threadRow).join('') || '<li class="empty-row">No active tasks for today.</li>') + `<li class="section-spacer"></li><li class="section-box-title old">10 Tasks that that are a few days old ...</li>` + (older.length ? older.map(threadRow).join('') : fallbackTasks.map(t=>`<li class="fallback-old">${escapeHtml(t)}</li>`).join('')); }
-function threadRow(t){ const comments=(t.comments||[]).length; const updated=formatDate(t.updated_at||t.created_at); return `<li class="thread-row ${t.id===state.selectedId?'selected':''}" data-id="${t.id}"><div><strong>${escapeHtml(t.title||'Untitled Thread')}</strong><small>${escapeHtml(t.category||'')}</small></div><span class="row-status">${escapeHtml(t.status||'New')}</span><span class="row-count">${comments} comments</span><span class="row-date">${updated}</span></li>`; }
-function renderSearchView(){ const q=state.query.toLowerCase(); const results=state.tasks.filter(t=>JSON.stringify(t).toLowerCase().includes(q)); $('searchResultsList').innerHTML = results.slice(0,12).map(t=>`<button class="recent-item" data-id="${t.id}"><span>${escapeHtml(t.title)}</span><span class="pin">›</span></button>`).join('') || '<p class="empty">No results.</p>'; renderTaskList(`Search: ${state.query || 'All'}`, results); }
-function renderFilesView(){ const rows=[]; state.tasks.forEach(t=>(t.files||[]).forEach(f=>rows.push({task:t,file:f}))); $('taskListHeading').textContent='Files'; $('centerTaskList').className='thread-list'; $('centerTaskList').innerHTML=rows.map(r=>`<li class="thread-row" data-id="${r.task.id}"><div><strong>${escapeHtml(r.file.filename)}</strong><small>${escapeHtml(r.task.title)} · ${escapeHtml(r.file.note||r.file.type||'file reference')}</small></div><span class="row-status">${escapeHtml(r.task.status)}</span><span class="row-count">${escapeHtml(r.task.category)}</span><span class="row-date">${formatDate(r.task.updated_at)}</span></li>`).join('') || '<li class="empty-row">No file references yet.</li>'; }
-function renderThread(task){
-  $('taskListHeading').textContent = task.title || 'Selected Task Thread'; $('centerTaskList').className='thread-view';
-  const comments=(task.comments||[]).map((c,i)=>`<div class="comment-bubble"><strong>${escapeHtml(c.author||'Will')}</strong><p contenteditable="true" data-comment-index="${i}">${escapeHtml(c.text)}</p><small>${formatDate(c.created_at)}</small></div>`).join('');
-  const completeAction = !isArchived(task) ? '<button id="completeBtn" type="button">Complete</button>' : '<span class="archived-note">Completed / Archived</span>';
-  $('centerTaskList').innerHTML=`<li class="thread-shell"><div class="thread-meta"><span>${escapeHtml(task.category||'')}</span><span>${escapeHtml(task.status||'New')}</span><span>${formatDate(task.updated_at||task.created_at)}</span></div><div class="original-message"><strong>Original Message</strong><p id="editableOriginalMessage" contenteditable="true">${escapeHtml(task.message||'')}</p><small>Sender: ${escapeHtml(task.sender||USER_SENDER)} · Destination: ${escapeHtml(task.destination||task.category||'')}</small></div><div class="comments-title">Comments / Replies</div><div class="comments-list">${comments||'<p class="empty">No comments yet.</p>'}</div><form id="commentForm" class="comment-form"><input id="commentInput" placeholder="Add a comment / reply to this task thread..." autocomplete="off" /><input id="commentFileInput" class="comment-file" placeholder="file reference" autocomplete="off" /><button type="submit">Add</button></form><div class="thread-actions">${completeAction}</div></li>`;
-  bindThreadActions();
-}
-function bindThreadActions(){ $('commentForm').onsubmit=async e=>{ e.preventDefault(); const text=$('commentInput').value.trim(); const file=$('commentFileInput').value.trim(); if(!text && !file) return; const t=selected(); const patch={}; if(text) patch.comments=[...(t.comments||[]), comment(text)]; if(file) patch.files=[...(t.files||[]), {filename:file,type:'reference',note:'attached from comment'}]; await updateSelected(patch, file ? `comment/file added: ${file}` : 'comment added'); }; const msg=$('editableOriginalMessage'); msg.onblur=async()=>{ const t=selected(); const text=msg.innerText.trim(); if(t && text !== (t.message||'')) await updateSelected({message:text}, 'original message updated'); }; document.querySelectorAll('[data-comment-index]').forEach(el=>{ el.onblur=async()=>{ const t=selected(); const i=Number(el.dataset.commentIndex); const comments=[...(t.comments||[])]; const text=el.innerText.trim(); if(comments[i] && comments[i].text!==text){ comments[i]={...comments[i], text}; await updateSelected({comments}, 'comment updated'); } }; }); const c=$('completeBtn'); if(c) c.onclick=async()=>{ if(selected()){ await updateSelected({status:'Done'}, 'task completed and archived'); state.selectedId=null; state.view='today'; render(); } }; }
-function renderRight(){
-  const t=selected(); $('addFileBtn').classList.add('hidden'); $('addParticipantBtn').classList.toggle('hidden', !t); $('addTestBtn').classList.toggle('hidden', !t);
-  const globalActivity=state.tasks.flatMap(x=>(x.activity||[]).map(a=>({...a,task:x.title}))).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
-  const activity=t ? (t.activity||[]) : globalActivity;
-  $('activityList').innerHTML=(activity.slice(-8).reverse ? activity.slice(-8).reverse() : activity.slice(0,8)).map(a=>`<li>- ${escapeHtml(a.text)}${a.task?` · ${escapeHtml(a.task)}`:''}</li>`).join('') || '<li>- Testing all GOOD</li><li>- WW uploaded & deployed</li><li>- Homie reviewed and approved</li>';
-  const globalFiles=[]; state.tasks.forEach(x=>(x.files||[]).forEach(f=>globalFiles.push({...f,task:x.title,updated_at:x.updated_at})));
-  const latest=globalFiles.slice(-6).reverse(); $('latestFilesList').innerHTML=latest.map(f=>`<li>- ${escapeHtml(f.filename)}${f.task?` · ${escapeHtml(f.task)}`:''}</li>`).join('') || '<li>- this-is-the-zip-05.zip</li><li>- this-is-the-zip-04.zip</li><li>- this-is-the-zip-03.zip</li>';
-  const attached=t?.files||[]; $('attachedFilesList').innerHTML=attached.map(f=>`<li>- ${escapeHtml(f.filename)}${f.note?' ('+escapeHtml(f.note)+')':''}</li>`).join('') || '<li>- No selected task files</li>';
-  $('statusPills').innerHTML=t ? STATUSES.filter(s=>s!=='Archived').map(s=>`<button class="status-pill ${s===t.status?'active':''}" data-status="${s}">${s}</button>`).join('') : '';
-  $('statusText').innerHTML=t ? `- ${escapeHtml(t.status)}<br>- ${escapeHtml(t.category)}` : '- need to abc move forward<br>uploaded files GitHub<br>test';
-  const tests=t?.test_entries||[]; $('testList').innerHTML=tests.map(x=>`<li>${escapeHtml(x.label)} - ${escapeHtml(x.status||'GOOD')}${x.note?' · '+escapeHtml(x.note):''}</li>`).join('') || '<li>health - GOOD</li><li>response - GOOD</li><li>test - GOOD</li>';
-  const people=t?.participants||[]; $('participantsList').innerHTML=people.map(p=>`<li>- ${escapeHtml(p.name)}${p.role?' - '+escapeHtml(p.role):''}</li>`).join('') || '<li>- WW - Governance</li><li>- Homie #2 - COO</li><li>- DDC -Digital Design / Creative</li>';
-}
-async function checkHealth(){ if(!selected()){ try{ await api('/health'); $('testList').innerHTML='<li>health - GOOD</li><li>response - GOOD</li><li>test - GOOD</li>'; } catch{} } }
-function formatDate(s){ if(!s) return ''; try{return new Date(s).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}catch{return '';} }
-function showModal(mode='task', isNew=false){ ['taskForm','fileForm','participantForm','testForm'].forEach(id=>$(id).classList.add('hidden')); $(`${mode}Form`)?.classList.remove('hidden'); $('modalBackdrop').classList.remove('hidden'); $('modalTitle').textContent=mode==='file'?'Add File Reference':mode==='participant'?'Add Participant':mode==='test'?'Add Test Entry':isNew?'New Task Thread':'Edit Task Thread'; if(mode==='task') fillTaskForm(isNew); }
-function hideModal(){ $('modalBackdrop').classList.add('hidden'); }
-function fillTaskForm(isNew=false){ const q=$('quickTitle').value.trim(); const t=isNew?{title:q,category:'Emily / Design & Creative',sender:USER_SENDER,destination:'Emily / Design & Creative',message:q,notes:'',status:'New'}:(selected()||{}); $('taskTitle').value=t.title||''; $('taskCategory').value=t.category||'Emily / Design & Creative'; $('taskSender').value=t.sender||USER_SENDER; $('taskDestination').value=t.category||t.destination||''; $('taskMessage').value=t.message||''; if($('taskNotes')) $('taskNotes').value=t.notes||''; $('taskFileName').value=''; $('taskFileType').value=''; $('taskStatus').value=t.status||'New'; }
-$('newTaskBtn').onclick=()=>showModal('task', true); $('quickPlus').onclick=()=>showModal('task', true); $('quickTaskForm').onsubmit=e=>{e.preventDefault(); showModal('task', true);};
-$('taskCategory').onchange=e=>{ $('taskDestination').value=e.target.value; };
-$('searchBtn').onclick=()=>{ state.selectedId=null; state.view='search'; render(); setTimeout(()=>$('searchInput')?.focus(),0); };
-$('searchInput').oninput=e=>{ state.query=e.target.value; state.view='search'; render(); };
-$('filesBtn').onclick=()=>{ state.selectedId=null; state.view='files'; render(); };
-$('archiveBtnNav').onclick=()=>{ state.selectedId=null; state.view='archive'; render(); };
-$('viewAllBtn').onclick=()=>{ state.selectedId=null; state.view='all'; render(); };
-$('editTaskBtn').onclick=()=>showModal('task', false); $('closeModal').onclick=hideModal; // overlay intentionally does not close on outside click/tab switch
-$('taskForm').onsubmit=async e=>{ e.preventDefault(); const existing=selected(); const category=$('taskCategory').value; const fileName=$('taskFileName').value.trim(); const fileType=$('taskFileType').value.trim(); const files=[...(existing?.files||[])]; if(fileName) files.push({filename:fileName,type:fileType||'reference',note:'attached from message'}); const payload=normalizeTask({ title:$('taskTitle').value.trim(), category, sender:USER_SENDER, destination:category, message:$('taskMessage').value.trim(), notes:'', status:$('taskStatus').value, comments:existing?.comments||[], files, participants:existing?.participants||[], activity:existing?.activity||[], test_entries:existing?.test_entries||[] }); if(!payload.title || !payload.category || !payload.message) return; if(existing){ await updateSelected(payload, fileName ? `task thread updated/file added: ${fileName}` : 'task thread updated'); } else { payload.activity=[stamp('task thread created')]; if(fileName) payload.activity.push(stamp(`file added: ${fileName}`)); const saved=await saveTask(payload); state.tasks=[saved,...state.tasks.filter(t=>t.id!==saved.id)]; state.selectedId=saved.id; state.view='thread'; localSave(); render('Task thread created'); } $('quickTitle').value=''; hideModal(); };
-function openThreadFromEvent(e){ const b=e.target.closest('[data-id]'); if(b){ state.selectedId=b.dataset.id; state.view='thread'; render(); } }
-$('recentsList').onclick=openThreadFromEvent; $('searchResultsList').onclick=openThreadFromEvent;
-$('centerTaskList').onclick=e=>{ const row=e.target.closest('[data-id]'); if(row){ state.selectedId=row.dataset.id; state.view='thread'; render(); } };
-$('statusPills').onclick=async e=>{ const b=e.target.closest('[data-status]'); if(b && selected()) await updateSelected({status:b.dataset.status}, `status changed to ${b.dataset.status}`); };
-$('addFileBtn').onclick=()=>showModal('file'); $('addParticipantBtn').onclick=()=>showModal('participant'); $('addTestBtn').onclick=()=>showModal('test');
-$('fileForm').onsubmit=async e=>{ e.preventDefault(); const t=selected(); if(!t) return; const f={filename:$('fileName').value.trim(),type:$('fileType').value.trim(),note:$('fileNote').value.trim()}; if(!f.filename) return; await updateSelected({files:[...(t.files||[]),f]}, `file added: ${f.filename}`); e.target.reset(); hideModal(); };
-$('participantForm').onsubmit=async e=>{ e.preventDefault(); const t=selected(); if(!t) return; const val=$('participantSelect').value; const parts=val.split(' / '); const p={name:parts[0]||val,role:parts.slice(1).join(' / ')}; if((t.participants||[]).some(x=>x.name===p.name && x.role===p.role)){ hideModal(); return; } await updateSelected({participants:[...(t.participants||[]),p]}, `participant added: ${val}`); e.target.reset(); hideModal(); };
-$('testForm').onsubmit=async e=>{ e.preventDefault(); const t=selected(); if(!t) return; const x={label:$('testLabel').value.trim(),status:$('testStatus').value.trim()||'GOOD',note:$('testNote').value.trim(),created_at:nowISO()}; if(!x.label) return; await updateSelected({test_entries:[...(t.test_entries||[]),x]}, `test entry added: ${x.label}`); e.target.reset(); hideModal(); };
+let state = { tasks: [], selectedId: null, view: 'home', query: '', health: null };
+
+function escapeHtml(v=''){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function taskTitle(text=''){const clean=String(text).trim().replace(/\s+/g,' ');return clean.length>66?clean.slice(0,63)+'...':clean || 'Untitled task';}
+function formatDate(s){try{return new Date(s).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}catch{return '';}}
+function toast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');setTimeout(()=>$('toast').classList.add('hidden'),1600);}
+function localSave(){localStorage.setItem(STORE_KEY, JSON.stringify(state.tasks));}
+function localLoad(){try{return JSON.parse(localStorage.getItem(STORE_KEY)||'[]');}catch{return [];}}
+async function api(path, opts={}){const res=await fetch(API_BASE+path,{headers:{'Content-Type':'application/json'},...opts});if(!res.ok)throw new Error(await res.text());return res.json();}
+function normalizeTask(t){const ts=nowISO(); const status = t.status === 'Done' ? 'Complete' : (STATUSES.includes(t.status)?t.status:'New'); return {id:t.id||crypto.randomUUID(),title:t.title||taskTitle(t.message||''),category:t.category||DEFAULT_CATEGORY,sender:t.sender||'Will',destination:t.destination||t.category||DEFAULT_CATEGORY,message:t.message||t.title||'',status,comments:t.comments||[],files:t.files||[],participants:t.participants||[],activity:t.activity||[],test_entries:t.test_entries||[],created_at:t.created_at||ts,updated_at:t.updated_at||ts};}
+function selected(){return state.tasks.find(t=>t.id===state.selectedId) || null;}
+function activeTasks(){return state.tasks.filter(t=>!['Complete','Archived','Done'].includes(t.status)).sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));}
+function archivedTasks(){return state.tasks.filter(t=>['Complete','Archived','Done'].includes(t.status)).sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));}
+function addActivity(t,text){return {...t, activity:[...(t.activity||[]), {text, created_at:nowISO()}], updated_at:nowISO()};}
+async function loadTasks(){try{const data=await api('/tasks');state.tasks=(data.tasks||[]).map(normalizeTask);localSave();}catch(e){state.tasks=localLoad().map(normalizeTask);} await loadHealth(); render();}
+async function saveTask(task){const normalized=normalizeTask(task);try{const data=await api('/tasks',{method:'POST',body:JSON.stringify(normalized)});return normalizeTask(data.task);}catch(e){return normalized;}}
+async function persistTask(task){const normalized=normalizeTask(task);try{const data=await api(`/tasks/${normalized.id}`,{method:'PUT',body:JSON.stringify(normalized)});return normalizeTask(data.task);}catch(e){return normalized;}}
+async function updateSelected(patch, activityText){const t=selected(); if(!t) return; let next={...t,...patch,updated_at:nowISO()}; if(activityText) next=addActivity(next, activityText); const saved=await persistTask(next); state.tasks=state.tasks.map(x=>x.id===saved.id?saved:x); localSave(); render(activityText);}
+async function loadHealth(){try{const h=await api('/health');state.health={api:true,...h, checked_at:nowISO()};}catch(e){state.health={api:false, error:'Backend health unavailable', checked_at:nowISO()};}}
+function inferCategory(text){const lower=text.toLowerCase(); for(const name of TEAM){ if(lower.includes(name.toLowerCase())) return CATEGORY_MAP[name]; } return DEFAULT_CATEGORY;}
+function fileRefFromInput(input,note='attached to task'){const f=input.files && input.files[0]; if(!f) return null; return {filename:f.name,type:f.type || f.name.split('.').pop() || 'file',note};}
+function downloadText(filename, content){const blob=new Blob([content],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),500);}
+function selectedTaskForName(name){return state.tasks.find(t=>t.title===name)||state.tasks[0]||null;}
+
+async function createQuickTask(){const input=$('quickTaskInput'); const text=input.value.trim(); const file=fileRefFromInput($('quickFileInput')); if(!text && !file){input.focus();return;} let task=normalizeTask({title:taskTitle(text || file.filename),message:text || file.filename,category:inferCategory(text),destination:inferCategory(text),status:'New',files:file?[file]:[],participants:[],activity:[{text:'task thread created',created_at:nowISO()}]}); if(file) task.activity.push({text:`file added: ${file.filename}`,created_at:nowISO()}); const saved=await saveTask(task); state.tasks=[saved,...state.tasks.filter(t=>t.id!==saved.id)]; state.selectedId=saved.id; state.view='thread'; localSave(); input.value=''; $('quickFileInput').value=''; render('Task created');}
+
+function setNav(){document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active')); const id=state.view==='search'?'searchBtn':state.view==='files'?'filesBtn':state.view==='archive'?'archiveBtnNav':'newTaskBtn'; $(id)?.classList.add('active'); $('searchResultsBlock').classList.toggle('hidden', state.view!=='search');}
+function render(msg){setNav(); renderRecents(); renderCenter(); renderRight(); if(msg) toast(msg);}
+function renderRecents(){const list=$('recentsList'); let rows=[]; if(state.view==='files'){ $('recentsHeading').textContent='Files'; const files=[]; state.tasks.forEach(t=>(t.files||[]).forEach(f=>files.push({task:t,...f}))); rows=files.slice(-20).reverse().map(f=>`<button class="recent-item" data-id="${f.task.id}"><span>${escapeHtml(f.filename)}</span><span class="pin">›</span><small>${escapeHtml(f.task.title)} · ${escapeHtml(f.note||'file')}</small></button>`); }
+else if(state.view==='archive'){ $('recentsHeading').textContent='Archive'; rows=archivedTasks().map(t=>recentRow(t)); }
+else { $('recentsHeading').textContent='Recents'; rows=state.tasks.slice().sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at))).slice(0,8).map(t=>recentRow(t)); }
+list.innerHTML=rows.join('') || '<p class="empty">No items yet.</p>'; renderSearch();}
+function recentRow(t){return `<button class="recent-item ${t.id===state.selectedId?'active':''}" data-id="${t.id}"><span>${escapeHtml(t.title)}</span><span class="pin">⌁</span><small>${escapeHtml(t.category)} · ${escapeHtml(t.status)} · ${formatDate(t.updated_at)}</small></button>`;}
+function renderSearch(){const box=$('searchInput'); if(state.view!=='search') return; const q=(state.query||'').toLowerCase().trim(); if(box && box.value !== state.query) box.value=state.query; if(!q){$('searchResultsList').innerHTML='<p class="empty">Type to search tasks, comments, and files.</p>';return;} const results=state.tasks.filter(t=>[t.title,t.message,t.category,t.status,...(t.comments||[]).map(c=>c.text),...(t.files||[]).map(f=>f.filename+' '+(f.note||''))].join(' ').toLowerCase().includes(q)); $('searchResultsList').innerHTML=results.map(t=>`<button class="search-row" data-id="${t.id}"><span>${escapeHtml(t.title)}</span><span>›</span><small>${escapeHtml(t.category)} · ${escapeHtml(t.status)}</small></button>`).join('') || '<p class="empty">No search results.</p>';}
+function taskRow(t){const count=(t.comments||[]).length; return `<li class="task-card ${t.id===state.selectedId?'active':''}" data-id="${t.id}"><strong>${escapeHtml(t.title)}</strong><div class="task-meta"><span>${escapeHtml(t.category)}</span><span class="status-badge">${escapeHtml(t.status)}</span><span>${count} comments</span><span>${formatDate(t.updated_at)}</span></div></li>`;}
+function renderCenter(){const t=selected(); if(state.view==='thread' && t) return renderThread(t); const heading=$('taskListHeading'); let items=[]; if(state.view==='archive'){heading.textContent='Archive'; items=archivedTasks();}
+else if(state.view==='all'){heading.textContent='All Task Threads'; items=state.tasks.slice().sort((a,b)=>String(b.updated_at).localeCompare(String(a.updated_at)));}
+else if(state.view==='files'){heading.textContent='Files'; return renderFilesCenter();}
+else {heading.textContent='Today’s Tasks'; items=activeTasks();}
+const older=items.filter(t=>new Date(t.created_at).toDateString()!==new Date().toDateString()); const today=items.filter(t=>new Date(t.created_at).toDateString()===new Date().toDateString()); let html=(today.length?today:items).map(taskRow).join(''); if(state.view==='home' && older.length){html += `<h2 class="older-title">10 Tasks that that are a few days old ...</h2>`+older.map(taskRow).join('');} $('centerTaskList').innerHTML=html || '<li class="empty">No active task threads yet.</li>';}
+function renderFilesCenter(){const files=[]; state.tasks.forEach(t=>(t.files||[]).forEach(f=>files.push({task:t,...f}))); $('centerTaskList').innerHTML=files.slice().reverse().map(f=>`<li class="task-card" data-id="${f.task.id}"><strong>${escapeHtml(f.filename)}</strong><div class="task-meta"><span>${escapeHtml(f.task.title)}</span><span>${escapeHtml(f.note||'file')}</span><span>${escapeHtml(f.type||'file')}</span></div></li>`).join('') || '<li class="empty">No files yet.</li>';}
+function renderThread(t){$('taskListHeading').textContent='Task Thread'; const comments=(t.comments||[]).map((c,i)=>`<div class="comment-item"><div class="comment-text" contenteditable="true" data-comment-index="${i}">${escapeHtml(c.text)}</div><small>${escapeHtml(c.author||'Will')} · ${formatDate(c.created_at)}</small></div>`).join(''); const files=(t.files||[]).map(f=>`<li>- ${escapeHtml(f.filename)} ${f.note?'('+escapeHtml(f.note)+')':''}</li>`).join(''); $('centerTaskList').innerHTML=`<li class="thread-card"><div class="thread-header"><div><div id="threadTitle" class="thread-title" contenteditable="true">${escapeHtml(t.title)}</div><select id="threadCategory" class="category-select">${Object.values(CATEGORY_MAP).map(c=>`<option ${c===t.category?'selected':''}>${escapeHtml(c)}</option>`).join('')}</select><div class="task-meta"><span class="status-badge">${escapeHtml(t.status)}</span><span>${formatDate(t.updated_at)}</span></div></div><div class="thread-actions"><button id="progressBtn" class="secondary" type="button">In Progress</button><button id="completeBtn" type="button">Complete</button></div></div><div class="original-message" id="threadMessage" contenteditable="true"><strong>Original Message</strong>${escapeHtml(t.message||'')}</div><div class="comments-title">Comments / Replies</div><div class="comments-list">${comments||'<p class="empty">No comments yet.</p>'}</div><form id="commentForm" class="comment-form"><input id="commentInput" class="comment-input" type="text" placeholder="Add another comment / reply..." autocomplete="off" /><label class="file-inline-label">+ file<input id="commentFileInput" class="comment-file" type="file" /></label><button type="submit">Add</button></form><div class="comments-title">Files</div><ul>${files||'<li class="empty">No files attached.</li>'}</ul></li>`; bindThread();}
+function bindThread(){const t=selected(); if(!t) return; $('threadTitle').onblur=()=>{const v=$('threadTitle').innerText.trim(); if(v && v!==t.title) updateSelected({title:v},'task name updated');}; $('threadMessage').onblur=()=>{const raw=$('threadMessage').innerText.replace(/^Original Message\s*/,'').trim(); if(raw!==t.message) updateSelected({message:raw},'original message updated');}; $('threadCategory').onchange=e=>updateSelected({category:e.target.value,destination:e.target.value},'category updated'); document.querySelectorAll('[data-comment-index]').forEach(el=>el.onblur=()=>{const i=Number(el.dataset.commentIndex); const comments=[...(selected()?.comments||[])]; const text=el.innerText.trim(); if(comments[i] && comments[i].text!==text){comments[i]={...comments[i],text}; updateSelected({comments},'comment updated');}}); $('commentForm').onsubmit=async e=>{e.preventDefault(); const current=selected(); const input=$('commentInput'); const text=input.value.trim(); const file=fileRefFromInput($('commentFileInput'),'attached to comment'); if(!text && !file){input.focus();return;} const comments=[...(current.comments||[])]; if(text) comments.push({text,author:'Will',created_at:nowISO()}); const files=[...(current.files||[])]; if(file) files.push(file); await updateSelected({comments,files}, file?`comment/file added: ${file.filename}`:'comment added');}; $('progressBtn').onclick=()=>updateSelected({status:'In Progress'},'status changed to In Progress'); $('completeBtn').onclick=()=>{if(confirm('Are you sure you want to complete this task?')) updateSelected({status:'Complete'},'task completed and archived').then(()=>{state.selectedId=null;state.view='home';render();});};}
+function renderRight(){const t=selected(); const globalActivity=state.tasks.flatMap(x=>(x.activity||[]).map(a=>({...a,task:x.title}))).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))); $('activityList').innerHTML=(t?(t.activity||[]):globalActivity).slice(-8).reverse().map(a=>`<li>- ${escapeHtml(a.text)}${a.task?` · ${escapeHtml(a.task)}`:''}</li>`).join('') || '<li>- No activity yet</li>'; const files=[]; state.tasks.forEach(x=>(x.files||[]).forEach(f=>files.push({...f,task:x.title,updated_at:x.updated_at}))); $('latestFilesList').innerHTML=files.slice(-6).reverse().map(f=>`<li data-id="${escapeHtml((state.tasks.find(x=>x.title===f.task)||{}).id||'')}">- ${escapeHtml(f.filename)} · ${escapeHtml(f.task)}</li>`).join('') || '<li>- No files yet</li>'; $('taskFilesList').innerHTML=(t?.files||[]).map(f=>`<li data-id="${escapeHtml(t.id)}">- ${escapeHtml(f.filename)}${f.note?' ('+escapeHtml(f.note)+')':''}</li>`).join('') || '<li>- Select a task to view files</li>'; const h=state.health; $('systemHealthList').innerHTML=`<li>/health - <span class="${h?.api?'health-good':'health-warn'}">${h?.api?'GOOD':'CHECK'}</span></li><li>Backend Status - ${h?.api?'Connected':'Unavailable'}</li><li>Database Status - ${h?.supabase_configured?'Supabase configured':'Local fallback / not configured'}</li><li>Supabase Status - ${h?.supabase_configured?'Configured':'Not configured'}</li><li>Last Check - ${formatDate(h?.checked_at)}</li>`; $('testList').innerHTML=(t?.test_entries||[]).map(x=>`<li>${escapeHtml(x.label)} - ${escapeHtml(x.status||'GOOD')} ${x.note?'· '+escapeHtml(x.note):''}</li>`).join('') || '<li>health - GOOD</li><li>response - GOOD</li><li>test - GOOD</li>'; $('participantsList').innerHTML=(t?.participants||[]).map(p=>`<li>- ${escapeHtml(p.name)}</li>`).join('') || '<li>- Select task participants</li>'; $('participantControls').classList.toggle('hidden', !t);}
+function seedSelects(){ $('participantSelect').innerHTML=TEAM.map(n=>`<option>${escapeHtml(n)}</option>`).join('');}
+function openThreadFromEvent(e){const row=e.target.closest('[data-id]'); if(row){state.selectedId=row.dataset.id;state.view='thread';render();}}
+$('homeLogo').onclick=()=>{state.selectedId=null;state.view='home';state.query='';render();};
+$('newTaskBtn').onclick=()=>{$('quickTaskInput').focus();state.view='home';state.selectedId=null;render();};
+$('quickPlus').onclick=()=>{$('quickTaskInput').focus();};
+$('quickTaskForm').onsubmit=e=>{e.preventDefault();createQuickTask();};
+$('searchBtn').onclick=()=>{state.selectedId=null;state.view='search';state.query='';render();setTimeout(()=>$('searchInput').focus(),0);};
+$('searchInput').oninput=e=>{state.query=e.target.value;renderSearch();};
+$('searchInput').onkeydown=e=>{if(e.key==='Escape'){state.view='home';state.query='';render();}};
+$('filesBtn').onclick=()=>{state.selectedId=null;state.view='files';render();};
+$('archiveBtnNav').onclick=()=>{state.selectedId=null;state.view='archive';render();};
+$('viewAllBtn').onclick=()=>{state.selectedId=null;state.view='all';render();};
+$('recentsList').onclick=openThreadFromEvent;$('searchResultsList').onclick=openThreadFromEvent;$('centerTaskList').onclick=openThreadFromEvent;
+document.querySelectorAll('.doc-card').forEach(card=>card.addEventListener('click',()=>{const name=card.dataset.doc||'WCC document';downloadText(name.replace(/\s+/g,'_')+'.json',JSON.stringify({document:name,exported_at:nowISO(),tasks:state.tasks},null,2));toast('Document export ready');}));
+document.querySelectorAll('.tiny-action').forEach((b,i)=>b.onclick=()=>{if(i===0){downloadText('wcc-export.json',JSON.stringify({exported_at:nowISO(),tasks:state.tasks},null,2));toast('WCC export ready');}else{state.view='all';state.selectedId=null;render('Showing all task threads');}});
+$('refreshHealthBtn').onclick=async()=>{await loadHealth();render('System health refreshed');};
+$('testEntryForm').onsubmit=e=>{e.preventDefault();const t=selected();const input=$('testEntryInput');const note=input.value.trim();if(!t){toast('Select a task first');return;}if(!note){input.focus();return;}const entries=[...(t.test_entries||[]),{label:'QA note',note,status:'GOOD',created_at:nowISO()}];input.value='';updateSelected({test_entries:entries},'test environment updated');};
+$('latestFilesList').onclick=openThreadFromEvent;$('taskFilesList').onclick=openThreadFromEvent;
+$('addParticipantInline').onclick=()=>{const t=selected(); if(!t) return; const name=$('participantSelect').value; const existing=t.participants||[]; if(existing.some(p=>p.name===name)) return; updateSelected({participants:[...existing,{name,role:CATEGORY_MAP[name]||''}]},`participant added: ${name}`);};
 seedSelects(); loadTasks();

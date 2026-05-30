@@ -12,7 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 TABLE = os.getenv("SUPABASE_TASKS_TABLE", "wcc_tasks")
 
-app = FastAPI(title="WCC Thread Model V1", version="1.1.1")
+app = FastAPI(title="WCC Thread Model V1", version="1.1.3")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -23,7 +23,7 @@ app.add_middleware(
 
 memory: Dict[str, Dict[str, Any]] = {}
 
-STATUSES = {"New", "In Progress", "Waiting", "Blocked", "Done", "Archived"}
+STATUSES = {"New", "In Progress", "Complete", "Archived", "Done"}
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -92,6 +92,8 @@ def normalize_task(t: Dict[str, Any]) -> Dict[str, Any]:
     t["destination"] = t.get("destination") or t["category"]
     t["message"] = t.get("message") or t.get("title") or ""
     t["notes"] = t.get("notes") or ""
+    if t.get("status") == "Done":
+        t["status"] = "Complete"
     t["status"] = t.get("status") if t.get("status") in STATUSES else "New"
     t["comments"] = t.get("comments") or []
     t["files"] = t.get("files") or []
@@ -134,7 +136,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.1-functional-sections"}
+    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.1-qa-round-3", "backend_status": "connected", "database_status": "supabase" if supabase_enabled() else "memory-fallback"}
 
 @app.get("/tasks")
 async def list_tasks():

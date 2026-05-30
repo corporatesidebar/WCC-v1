@@ -1,19 +1,20 @@
-# QA Round 3 Test Checklist
+# WCC V1.2 Core Workflow Test Checklist
 
-- [ ] WCC logo returns to Home.
-- [ ] Search opens in left navigation; blank search causes no error or file-save window.
-- [ ] Search results are clickable and load task threads.
-- [ ] Quick task input creates a thread immediately with no overlay.
-- [ ] New task appears in Today’s Tasks as `New`.
-- [ ] Add 3 comments to one task; comment input remains usable after each add.
-- [ ] Refresh; task and comments remain.
-- [ ] Attach file during task creation or comment; file appears in thread, Files, Latest Files.
-- [ ] Add multiple predefined participants; refresh; participants remain.
-- [ ] Click In Progress; refresh; status remains.
-- [ ] Click Complete; confirmation appears.
-- [ ] Confirm Complete; task leaves Today and appears in Archive.
-- [ ] Archive link opens completed/archived tasks.
-- [ ] Files link opens all file references.
-- [ ] View All opens all task threads.
-- [ ] System Health refresh works.
-- [ ] Test Environment note saves to selected task.
+1. Create a task from the compact input.
+2. Confirm task appears in Today’s Tasks and Recents.
+3. Open the task thread.
+4. Add 5 comments, one after another.
+5. Refresh and confirm all comments remain.
+6. Attach a file at task creation or from the comment area.
+7. Refresh and confirm file remains in the thread and Files areas.
+8. Add multiple participants from the predefined list.
+9. Refresh and confirm participants remain.
+10. Edit task title and original message.
+11. Refresh and confirm edits remain.
+12. Click In Progress and confirm status persists.
+13. Click Complete and confirm the confirmation appears.
+14. Confirm completion.
+15. Confirm task leaves Today’s Tasks.
+16. Open Archive from the left navigation.
+17. Confirm archived task remains retrievable.
+18. Use Search to find the task by task text, comment, participant, or file name.

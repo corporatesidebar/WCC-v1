@@ -1,23 +1,27 @@
-# WCC V1.1 — QA Round 3
+# WCC V1.2 — Core Product Build
 
-Functional patch only. Locked layout preserved. Task thread/forum model preserved.
+WCC is Communication Management Infrastructure built around the core workflow:
 
-## Model
-Category / Digital Team Member → Task Thread → Comments / Replies → Files → Activity → Participants → Complete → Archive.
+Category / Digital Team Member → Task Thread → Comments / Replies → Files → Activity → Participants → Complete → Archive
 
-## QA Round 3 Fixes
-- Removed backend cache files from package.
-- WCC logo routes to Home.
-- Search opens in the left navigation area and results are clickable.
-- Quick task bar creates a thread directly with no overlay.
-- New tasks default to `New`; workflow is `New → In Progress → Complete → Archive view`.
-- Complete confirms before completion, marks task `Complete`, and removes it from Today.
-- Comments support unlimited additions and persist after refresh.
-- Files can be attached from task creation and comment flow; Files panels populate.
-- Participants use predefined team members and allow multiple selections.
-- System Health represents backend/database/Supabase health.
-- Test Environment supports selected-task QA notes.
-- Visible doc/download/share controls now perform safe local exports instead of dead clicks.
+## What this build fixes
 
-## Deploy
-Upload `frontend/` to the static Render service and `backend/` to the FastAPI Render service. Apply `supabase_schema.sql` if the table does not exist.
+- Task submission from the compact "Tell me..." input creates a task thread immediately.
+- Task threads persist through backend/Supabase when configured, with local fallback.
+- Unlimited comments/replies are supported inside the selected task thread.
+- Files can be attached at task creation or inside a comment flow as file references.
+- Participants are selected from the predefined digital team list and tied to the selected task.
+- Task status supports New → In Progress → Archived.
+- Complete confirmation automatically archives the task and removes it from active tasks.
+- Archive remains retrievable from the left navigation.
+- Search covers tasks, original messages, comments, files, category, and status.
+- Right column is context-aware for activity, files, health, tests, and participants.
+
+## Files
+
+- frontend/index.html
+- frontend/styles.css
+- frontend/app.js
+- backend/main.py
+- backend/requirements.txt
+- supabase_schema.sql

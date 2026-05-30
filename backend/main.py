@@ -12,7 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 TABLE = os.getenv("SUPABASE_TASKS_TABLE", "wcc_tasks")
 
-app = FastAPI(title="WCC Thread Model V1", version="1.1.3")
+app = FastAPI(title="WCC Core Thread Workflow", version="1.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -64,7 +64,7 @@ class Comment(BaseModel):
     created_at: str = Field(default_factory=now)
 
 class TaskIn(BaseModel):
-    title: str
+    title: Optional[str] = ""
     category: Optional[str] = "Commander / Governance"
     sender: Optional[str] = "WW - Governance"
     destination: Optional[str] = ""
@@ -91,9 +91,10 @@ def normalize_task(t: Dict[str, Any]) -> Dict[str, Any]:
     t["sender"] = t.get("sender") or "WW - Governance"
     t["destination"] = t.get("destination") or t["category"]
     t["message"] = t.get("message") or t.get("title") or ""
+    t["title"] = t.get("title") or (t["message"][:72] if t["message"] else "Untitled task")
     t["notes"] = t.get("notes") or ""
-    if t.get("status") == "Done":
-        t["status"] = "Complete"
+    if t.get("status") in {"Done", "Complete"}:
+        t["status"] = "Archived"
     t["status"] = t.get("status") if t.get("status") in STATUSES else "New"
     t["comments"] = t.get("comments") or []
     t["files"] = t.get("files") or []
@@ -132,11 +133,11 @@ async def sb_update(task_id: str, task: Dict[str, Any]) -> Dict[str, Any]:
 
 @app.get("/")
 def root():
-    return {"app": "WCC", "status": "running", "model": "task-thread-forum", "supabase": supabase_enabled()}
+    return {"app": "WCC", "status": "running", "model": "category-task-thread-comments-files-activity-participants-archive", "supabase": supabase_enabled()}
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.1-qa-round-3", "backend_status": "connected", "database_status": "supabase" if supabase_enabled() else "memory-fallback"}
+    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-v1.2-core-thread-workflow", "backend_status": "connected", "database_status": "supabase" if supabase_enabled() else "memory-fallback"}
 
 @app.get("/tasks")
 async def list_tasks():

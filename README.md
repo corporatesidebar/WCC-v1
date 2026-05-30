@@ -1,26 +1,19 @@
-# WCC V1.1 Functional Sections
+# WCC V1.1 QA Fix Batch 1
 
-Functional WCC Communication Management Infrastructure using the locked WCC layout.
+Functional task-thread/forum model preserved.
 
-Model preserved:
-Category / Digital Team Member → Task Thread → Comments / Replies → Files / Status / Activity → Complete / Archive.
+Implemented fixes:
+- New Task modal stays open until Cancel/X/successful Create.
+- Notes removed from UX; Comments terminology used in thread model.
+- Sender auto-selects from account/system default.
+- Destination auto-selects from selected category/digital team member.
+- Today’s Tasks added above older incomplete task section.
+- Files are added from task/message/comment area, not right column.
+- Attached Files is selected-task only; Latest Files is global.
+- Task name, original message, comments, category, and status are editable.
+- Search results render under Search in the left navigation and are clickable.
+- Archive link added below Files and above Recents.
+- Complete moves task out of Today and into Archive.
+- Participants selected from predefined list.
 
-## Included
-- frontend/index.html
-- frontend/styles.css
-- frontend/app.js
-- backend/main.py
-- backend/requirements.txt
-- supabase_schema.sql
-- DEPLOYMENT_NOTES.md
-- TEST_CHECKLIST.md
-
-## Functional Areas
-- New Task opens task thread creation
-- Search searches task/thread/comment/file/test/participant data
-- Files shows file references across tasks
-- Recents opens selected thread
-- View All shows active and archived task threads
-- Thread view supports comments/replies, complete, archive
-- Right column updates from selected task context
-- Status, files, participants, activity, and test entries persist
+Deploy frontend and backend folders as before.

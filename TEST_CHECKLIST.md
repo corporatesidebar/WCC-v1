@@ -1,18 +1,15 @@
-# WCC V1.1 QA Checklist
+# WCC QA Checklist
 
-- [ ] Click New Task and create task under Emily / Design & Creative.
-- [ ] Confirm task appears in Recents and active Today list.
-- [ ] Open task and add 3 comments.
-- [ ] Refresh and confirm comments remain.
-- [ ] Add file reference from Attached Files.
-- [ ] Refresh and confirm file remains in selected task and global Files view.
-- [ ] Add participant.
-- [ ] Refresh and confirm participant remains.
-- [ ] Add TEST Environment entry.
-- [ ] Refresh and confirm test entry remains.
-- [ ] Change status to In Progress / Waiting / Blocked.
-- [ ] Refresh and confirm status remains.
-- [ ] Complete task and confirm status becomes Done.
-- [ ] Archive task and confirm it leaves Today / Recents.
-- [ ] Click View All and confirm archived task remains retrievable.
-- [ ] Search by task title, comment text, filename, or participant name.
+- Open page: layout matches locked WCC reference.
+- Click New Task or +: modal opens and stays open when clicking outside or changing tabs.
+- Create task with Category, Task Name, Message, optional file reference.
+- Confirm Sender is defaulted and Destination follows Category.
+- Confirm task appears in Today’s Tasks and Recents.
+- Add comments in the thread; refresh; comments remain.
+- Add file reference from comment area; refresh; Attached Files shows selected task file and Latest Files shows global file.
+- Edit original message and a comment; refresh; edits remain.
+- Change status; refresh; status remains.
+- Add participant from predefined list; refresh; participant remains.
+- Use Search; results appear under Search on left and rows open the thread.
+- Click Complete; task leaves Today’s Tasks and appears under Archive.
+- View All opens all task threads cleanly.

@@ -21,7 +21,14 @@
         <button id="newTaskBtn" class="nav-item active"><span class="nav-icon plus">+</span> New TASK</button>
         <button id="searchBtn" class="nav-item"><span class="nav-icon">⌕</span> Search</button>
         <button id="filesBtn" class="nav-item"><span class="nav-icon">□</span> Files</button>
+        <button id="archiveBtnNav" class="nav-item"><span class="nav-icon">▤</span> Archive</button>
       </nav>
+
+      <section id="searchResultsBlock" class="search-results-block hidden">
+        <h2>Search Results</h2>
+        <input id="searchInput" class="search-input" placeholder="Search threads, comments, files..." />
+        <div id="searchResultsList" class="recents-list"></div>
+      </section>
 
       <section class="recents-block">
         <h2>Recents</h2>
@@ -82,14 +89,14 @@
       </div>
       <form id="taskForm" class="task-form">
         <div class="form-grid">
-          <label>Title<input id="taskTitle" required /></label>
+          <label>Task Name<input id="taskTitle" required /></label>
           <label>Status<select id="taskStatus"></select></label>
-          <label>Category / Team Member<select id="taskCategory"></select></label>
-          <label>Sender<input id="taskSender" placeholder="WW - Governance" /></label>
-          <label>Destination<input id="taskDestination" placeholder="Emily / Design & Creative" /></label>
+          <label>Category / Digital Team Member<select id="taskCategory"></select></label>
+          <label>Sender<input id="taskSender" readonly /></label>
+          <label>Destination<input id="taskDestination" readonly /></label>
         </div>
-        <label>Initial Message<textarea id="taskMessage" rows="5"></textarea></label>
-        <label>Notes<textarea id="taskNotes" rows="4"></textarea></label>
+        <label>Message<textarea id="taskMessage" rows="5"></textarea></label>
+        <div class="file-ref-inline"><label>Optional File Reference<input id="taskFileName" placeholder="design.zip or file name" /></label><label>File Type<input id="taskFileType" placeholder="zip, pdf, png" /></label></div>
         <div class="form-actions"><button type="submit">Save Task</button><span id="saveState"></span></div>
       </form>
       <form id="fileForm" class="task-form hidden">
@@ -103,8 +110,9 @@
         <div class="form-actions"><button type="submit">Add Test Entry</button></div>
       </form>
       <form id="participantForm" class="task-form hidden">
-        <label>Name<input id="participantName" placeholder="WW" /></label>
-        <label>Role<input id="participantRole" placeholder="Governance" /></label>
+        <label>Participant<select id="participantSelect"></select></label>
+        <input id="participantName" type="hidden" />
+        <input id="participantRole" type="hidden" />
         <div class="form-actions"><button type="submit">Add Participant</button></div>
       </form>
     </div>

@@ -1,35 +1,21 @@
-# WCC Functional V1
+# WCC V1 — Task Thread / Forum Model
 
-Locked-layout implementation for WCC Communication Management Infrastructure.
+Functional WCC V1 build preserving the locked layout while changing the functional model from one-off task forms to task threads.
 
-## Frontend
+## Includes
+
+- Compact Add New Task bar preserved
+- Task thread creation by category / digital team member
+- Today view with active task threads, newest first
+- Thread view with original message, comments / replies, files, status, activity, participants
+- Complete / Archive flow
+- Supabase persistence with localStorage fallback
+
+## Files
+
 - `frontend/index.html`
 - `frontend/styles.css`
 - `frontend/app.js`
-
-Set the backend URL in `frontend/app.js`:
-
-```js
-const API_BASE = window.WCC_API_BASE || 'https://your-wcc-backend.onrender.com';
-```
-
-## Backend
-- FastAPI
-- Supabase REST persistence
-- Local in-memory fallback if Supabase env vars are not set
-
-Required Render environment variables:
-
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-SUPABASE_TASKS_TABLE=wcc_tasks
-```
-
-Start locally:
-
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
+- `backend/main.py`
+- `backend/requirements.txt`
+- `supabase_schema.sql`

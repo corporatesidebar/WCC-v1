@@ -12,7 +12,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY", "")
 TABLE = os.getenv("SUPABASE_TASKS_TABLE", "wcc_tasks")
 
-app = FastAPI(title="WCC Functional V1", version="1.0.0")
+app = FastAPI(title="WCC Thread Model V1", version="1.1.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,6 +22,8 @@ app.add_middleware(
 )
 
 memory: Dict[str, Dict[str, Any]] = {}
+
+STATUSES = {"New", "In Progress", "Waiting", "Blocked", "Done", "Archived"}
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -50,13 +52,20 @@ class Participant(BaseModel):
     name: str
     role: Optional[str] = ""
 
+class Comment(BaseModel):
+    text: str
+    author: Optional[str] = "WW"
+    created_at: str = Field(default_factory=now)
+
 class TaskIn(BaseModel):
     title: str
-    sender: Optional[str] = ""
+    category: Optional[str] = "Commander / Governance"
+    sender: Optional[str] = "WW - Governance"
     destination: Optional[str] = ""
     message: Optional[str] = ""
     notes: Optional[str] = ""
     status: Optional[str] = "New"
+    comments: List[Comment] = []
     files: List[FileRef] = []
     participants: List[Participant] = []
     activity: List[Activity] = []
@@ -66,24 +75,41 @@ class Task(TaskIn):
     created_at: str
     updated_at: str
 
+def normalize_task(t: Dict[str, Any]) -> Dict[str, Any]:
+    timestamp = now()
+    t.setdefault("id", str(uuid4()))
+    t.setdefault("created_at", timestamp)
+    t["updated_at"] = t.get("updated_at") or timestamp
+    t["category"] = t.get("category") or t.get("destination") or "Commander / Governance"
+    t["sender"] = t.get("sender") or "WW - Governance"
+    t["destination"] = t.get("destination") or t["category"]
+    t["message"] = t.get("message") or t.get("title") or ""
+    t["notes"] = t.get("notes") or ""
+    t["status"] = t.get("status") if t.get("status") in STATUSES else "New"
+    t["comments"] = t.get("comments") or []
+    t["files"] = t.get("files") or []
+    t["participants"] = t.get("participants") or []
+    t["activity"] = t.get("activity") or []
+    return t
+
 async def sb_get_all() -> List[Dict[str, Any]]:
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.get(f"{SUPABASE_URL}/rest/v1/{TABLE}?select=*&order=updated_at.desc", headers=headers())
         r.raise_for_status()
-        return r.json()
+        return [normalize_task(x) for x in r.json()]
 
 async def sb_get(task_id: str) -> Optional[Dict[str, Any]]:
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.get(f"{SUPABASE_URL}/rest/v1/{TABLE}?id=eq.{task_id}&select=*", headers=headers())
         r.raise_for_status()
         data = r.json()
-        return data[0] if data else None
+        return normalize_task(data[0]) if data else None
 
 async def sb_insert(task: Dict[str, Any]) -> Dict[str, Any]:
     async with httpx.AsyncClient(timeout=20) as client:
         r = await client.post(f"{SUPABASE_URL}/rest/v1/{TABLE}", headers=headers(), json=task)
         r.raise_for_status()
-        return r.json()[0]
+        return normalize_task(r.json()[0])
 
 async def sb_update(task_id: str, task: Dict[str, Any]) -> Dict[str, Any]:
     async with httpx.AsyncClient(timeout=20) as client:
@@ -91,16 +117,16 @@ async def sb_update(task_id: str, task: Dict[str, Any]) -> Dict[str, Any]:
         r.raise_for_status()
         data = r.json()
         if not data:
-            raise HTTPException(status_code=404, detail="Task not found")
-        return data[0]
+            raise HTTPException(status_code=404, detail="Task thread not found")
+        return normalize_task(data[0])
 
 @app.get("/")
 def root():
-    return {"app": "WCC", "status": "running", "supabase": supabase_enabled()}
+    return {"app": "WCC", "status": "running", "model": "task-thread-forum", "supabase": supabase_enabled()}
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-functional-v1"}
+    return {"status": "ok", "supabase_configured": supabase_enabled(), "version": "wcc-thread-model-v1"}
 
 @app.get("/tasks")
 async def list_tasks():
@@ -109,24 +135,26 @@ async def list_tasks():
             return {"tasks": await sb_get_all()}
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Supabase read failed: {e}")
-    return {"tasks": sorted(memory.values(), key=lambda x: x.get("updated_at", ""), reverse=True)}
+    return {"tasks": sorted([normalize_task(x) for x in memory.values()], key=lambda x: x.get("updated_at", ""), reverse=True)}
 
 @app.get("/tasks/{task_id}")
 async def read_task(task_id: str):
     if supabase_enabled():
         task = await sb_get(task_id)
-        if not task: raise HTTPException(status_code=404, detail="Task not found")
+        if not task:
+            raise HTTPException(status_code=404, detail="Task thread not found")
         return {"task": task}
-    if task_id not in memory: raise HTTPException(status_code=404, detail="Task not found")
-    return {"task": memory[task_id]}
+    if task_id not in memory:
+        raise HTTPException(status_code=404, detail="Task thread not found")
+    return {"task": normalize_task(memory[task_id])}
 
 @app.post("/tasks")
 async def create_task(payload: TaskIn):
-    t = payload.model_dump()
+    t = normalize_task(payload.model_dump())
     timestamp = now()
     t.update({"id": str(uuid4()), "created_at": timestamp, "updated_at": timestamp})
-    if not t.get("activity"):
-        t["activity"] = [{"text": "task created", "created_at": timestamp}]
+    t["destination"] = t.get("destination") or t.get("category") or "Commander / Governance"
+    t["activity"] = t.get("activity") or [{"text": "task thread created", "created_at": timestamp}]
     if supabase_enabled():
         try:
             return {"task": await sb_insert(t)}
@@ -138,8 +166,9 @@ async def create_task(payload: TaskIn):
 @app.put("/tasks/{task_id}")
 async def update_task(task_id: str, payload: TaskIn):
     existing = await sb_get(task_id) if supabase_enabled() else memory.get(task_id)
-    if not existing: raise HTTPException(status_code=404, detail="Task not found")
-    t = payload.model_dump()
+    if not existing:
+        raise HTTPException(status_code=404, detail="Task thread not found")
+    t = normalize_task(payload.model_dump())
     t["id"] = task_id
     t["created_at"] = existing.get("created_at", now())
     t["updated_at"] = now()

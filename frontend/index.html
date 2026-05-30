@@ -49,28 +49,17 @@
       <section class="add-task-section">
         <h2>Add New Task</h2>
         <form id="quickTaskForm" class="quick-task-bar">
-          <button type="button" class="big-plus">+</button>
+          <button type="button" id="quickPlus" class="big-plus">+</button>
           <input id="quickTitle" type="text" placeholder="Tell me ... What needs to get done now? ..." autocomplete="off" />
           <button class="voice-btn" type="submit">▮▮</button>
         </form>
       </section>
 
-      <section id="editorPanel" class="editor-panel hidden">
-        <form id="taskForm" class="task-form">
-          <div class="form-grid">
-            <label>Title<input id="taskTitle" required /></label>
-            <label>Status<select id="taskStatus"></select></label>
-            <label>Sender<input id="taskSender" placeholder="WW - Governance" /></label>
-            <label>Destination<input id="taskDestination" placeholder="Homie #2 - COO" /></label>
-          </div>
-          <label>Request / Message<textarea id="taskMessage" rows="5"></textarea></label>
-          <label>Notes<textarea id="taskNotes" rows="4"></textarea></label>
-          <div class="form-actions"><button type="submit">Save Task</button><span id="saveState"></span></div>
-        </form>
-      </section>
-
       <section id="taskDisplay" class="tasks-section">
-        <h2 id="taskListHeading">10 Tasks that that are a few days old ...</h2>
+        <div class="task-heading-row">
+          <h2 id="taskListHeading">10 Tasks that that are a few days old ...</h2>
+          <button id="editTaskBtn" class="ghost-action hidden">edit</button>
+        </div>
         <ol id="centerTaskList"></ol>
       </section>
     </main>
@@ -78,11 +67,41 @@
     <aside class="right-column">
       <section class="info-card"><div class="card-title"><span>⌖</span><h3>Latest Activity</h3></div><ul id="activityList"></ul></section>
       <section class="info-card"><div class="card-title"><span>□</span><h3>Latest Files</h3></div><ul id="latestFilesList"></ul></section>
-      <section class="info-card"><div class="card-title"><span>⌕</span><h3>Attached Files</h3></div><form id="fileForm" class="mini-form"><input id="fileName" placeholder="filename.zip"/><input id="fileType" placeholder="type"/><input id="fileNote" placeholder="note"/><button>Add File</button></form><ul id="attachedFilesList"></ul></section>
-      <section class="info-card"><div class="card-title"><span>▤</span><h3>Status</h3></div><select id="statusSelect"></select><p id="statusText"></p></section>
+      <section class="info-card"><div class="card-title"><span>⌕</span><h3>Attached Files</h3><button id="addFileBtn" class="mini-link hidden">add</button></div><ul id="attachedFilesList"></ul></section>
+      <section class="info-card"><div class="card-title"><span>▤</span><h3>Status</h3></div><div id="statusPills" class="status-pills"></div><p id="statusText"></p></section>
       <section class="info-card"><div class="card-title"><span>⌁</span><h3>TEST Environment</h3></div><ul id="testList"><li>health - checking</li><li>response - checking</li><li>test - pending</li></ul></section>
-      <section class="info-card"><div class="card-title"><span>⌁</span><h3>Participants</h3></div><form id="participantForm" class="mini-form"><input id="participantName" placeholder="name"/><input id="participantRole" placeholder="role"/><button>Add</button></form><ul id="participantsList"></ul></section>
+      <section class="info-card"><div class="card-title"><span>⌁</span><h3>Participants</h3><button id="addParticipantBtn" class="mini-link hidden">add</button></div><ul id="participantsList"></ul></section>
     </aside>
+  </div>
+
+  <div id="modalBackdrop" class="modal-backdrop hidden">
+    <div class="modal-card" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3 id="modalTitle">New Task</h3>
+        <button id="closeModal" class="close-btn">×</button>
+      </div>
+      <form id="taskForm" class="task-form">
+        <div class="form-grid">
+          <label>Title<input id="taskTitle" required /></label>
+          <label>Status<select id="taskStatus"></select></label>
+          <label>Sender<input id="taskSender" placeholder="WW - Governance" /></label>
+          <label>Destination<input id="taskDestination" placeholder="Homie #2 - COO" /></label>
+        </div>
+        <label>Request / Message<textarea id="taskMessage" rows="5"></textarea></label>
+        <label>Notes<textarea id="taskNotes" rows="4"></textarea></label>
+        <div class="form-actions"><button type="submit">Save Task</button><span id="saveState"></span></div>
+      </form>
+      <form id="fileForm" class="task-form hidden">
+        <label>Filename<input id="fileName" placeholder="design.zip" /></label>
+        <div class="form-grid"><label>Type<input id="fileType" placeholder="zip" /></label><label>Note<input id="fileNote" placeholder="view" /></label></div>
+        <div class="form-actions"><button type="submit">Add File Reference</button></div>
+      </form>
+      <form id="participantForm" class="task-form hidden">
+        <label>Name<input id="participantName" placeholder="WW" /></label>
+        <label>Role<input id="participantRole" placeholder="Governance" /></label>
+        <div class="form-actions"><button type="submit">Add Participant</button></div>
+      </form>
+    </div>
   </div>
   <script src="app.js"></script>
 </body>
